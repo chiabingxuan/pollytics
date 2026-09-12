@@ -16,13 +16,9 @@ CREATE TABLE IF NOT EXISTS regions (
     id SERIAL PRIMARY KEY,
     name VARCHAR(256) NOT NULL,
     country_id INT NOT NULL REFERENCES countries(id),
+    parent_region_id INT NOT NULL REFERENCES regions(id), -- a region will be a child of itself if there is nothing bigger
     type VARCHAR(256) NOT NULL CHECK (type IN ('state', 'county')),
-    UNIQUE (name, country_id)
-);
-
-CREATE TABLE IF NOT EXISTS region_hierarchies (
-    child_id INT PRIMARY KEY REFERENCES regions(id),
-    parent_id INT NOT NULL REFERENCES regions(id)
+    UNIQUE (name, parent_region_id)
 );
 
 CREATE TABLE IF NOT EXISTS region_borders (
@@ -34,7 +30,7 @@ CREATE TABLE IF NOT EXISTS region_borders (
 
 CREATE TABLE IF NOT EXISTS candidates (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(256) NOT NULL
+    name VARCHAR(256) UNIQUE NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS parties (
