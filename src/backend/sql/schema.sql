@@ -8,13 +8,13 @@ CREATE TABLE IF NOT EXISTS countries (
 /*
 Represents electoral divisions, within which electoral contests take place.
 
-Eg. country, state, congressional district, constituency.
+Eg. Country, state, congressional district, constituency.
 */
 CREATE TABLE IF NOT EXISTS divisions (
     id SERIAL PRIMARY KEY,
     name VARCHAR(256) NOT NULL,
     country_id INT NOT NULL REFERENCES countries(id),
-    type VARCHAR(256) NOT NULL CHECK (type IN ('country', 'state', 'cd', 'constituency')), -- a country can also a division at-large
+    type VARCHAR(256) NOT NULL CHECK (type IN ('COUNTRY', 'STATE', 'CONGRESSIONAL DISTRICT', 'CONSTITUENCY')), -- a country can also a division at-large
     UNIQUE (name, country_id)
 );
 
@@ -34,10 +34,10 @@ Eg. A state has many counties; a congressional district has a few counties.
 Note that the same county may be in multiple congressional districts.
 */
 CREATE TABLE IF NOT EXISTS regions (
-    id SERIAL PRIMARY KEY,
+    id INT PRIMARY KEY,
     name VARCHAR(256) NOT NULL,
     country_id INT NOT NULL REFERENCES countries(id),
-    type VARCHAR(256) NOT NULL CHECK (type IN ('county'))
+    type VARCHAR(256) NOT NULL CHECK (type IN ('COUNTY', 'PARISH', 'FEDERAL DISTRICT', 'STATE HOUSE DISTRICT'))
 );
 
 CREATE TABLE IF NOT EXISTS region_borders (
@@ -65,13 +65,13 @@ CREATE TABLE IF NOT EXISTS elections (
     country_id INT NOT NULL REFERENCES countries(id),
     name VARCHAR(256) NOT NULL,
     year INT NOT NULL,
-    type VARCHAR(64) NOT NULL CHECK (type IN ('presidential', 'senate', 'house', 'gubernatorial')),
+    type VARCHAR(64) NOT NULL CHECK (type IN ('PRESIDENT', 'SENATE', 'HOUSE', 'GOVERNOR')),
     UNIQUE (country_id, name, year)
 );
 
 /*
 Represents individual electoral contests, each corresponding to a (election, division) pair.
-Eg. house race for the 2020 US election in Michigan's 1st district.
+Eg. House race for the 2020 US election in Michigan's 1st district.
 */
 CREATE TABLE IF NOT EXISTS races (
     election_id INT REFERENCES elections(id),
@@ -102,10 +102,10 @@ CREATE TABLE IF NOT EXISTS participation_parties (
 
 /*
 Represents votes that are not for the known participations.
-Eg. other minor candidates, spoiled votes, etc.
+Eg. Other minor candidates, spoiled votes, etc.
 */
 CREATE TABLE IF NOT EXISTS other_vote_types (
-    type VARCHAR(64) PRIMARY KEY CHECK (type IN ('other_cands', 'spoiled', 'undervotes', 'overvotes'))
+    type VARCHAR(64) PRIMARY KEY CHECK (type IN ('OTHER CANDIDATE', 'SPOILED', 'UNDERVOTES', 'OVERVOTES'))
 );
 
 /*
