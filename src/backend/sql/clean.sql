@@ -1,0 +1,15 @@
+DROP TABLE IF EXISTS other_regional_results;
+DROP TABLE IF EXISTS participation_regional_results;
+DROP TABLE IF EXISTS other_racewide_results;
+DROP TABLE IF EXISTS other_vote_types;
+DROP TABLE IF EXISTS participation_parties;
+DROP TABLE IF EXISTS participations;
+DROP TABLE IF EXISTS races;
+DROP TABLE IF EXISTS elections;
+DROP TABLE IF EXISTS parties;
+DROP TABLE IF EXISTS candidates;
+DROP TABLE IF EXISTS region_borders;
+DROP TABLE IF EXISTS regions;
+DROP TABLE IF EXISTS division_borders;
+DROP TABLE IF EXISTS divisions;
+DROP TABLE IF EXISTS countries;
