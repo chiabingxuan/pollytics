@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS divisions (
     id SERIAL PRIMARY KEY,
     name VARCHAR(256) NOT NULL,
     country_id INT NOT NULL REFERENCES countries(id),
-    type VARCHAR(256) NOT NULL CHECK (type IN ('COUNTRY', 'STATE', 'CONGRESSIONAL DISTRICT', 'CONSTITUENCY')), -- a country can also a division at-large
+    type VARCHAR(256) NOT NULL CHECK (type IN ('COUNTRY', 'STATE', 'CONGRESSIONAL DISTRICT', 'FEDERAL DISTRICT', 'CONSTITUENCY')), -- a country can also a division at-large
     UNIQUE (name, country_id)
 );
 
