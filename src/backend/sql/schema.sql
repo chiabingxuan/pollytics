@@ -101,11 +101,13 @@ CREATE TABLE IF NOT EXISTS participation_parties (
 );
 
 /*
-Represents votes that are not for the known participations.
-Eg. Other minor candidates, spoiled votes, etc.
+Represents reported vote categories that are not associated
+with a known candidate participation.
+"OTHER" represents votes aggregated by the source datasets
+whose underlying candidates or vote categories cannot be distinguished.
 */
 CREATE TABLE IF NOT EXISTS other_vote_types (
-    type VARCHAR(64) PRIMARY KEY CHECK (type IN ('OTHER CANDIDATE', 'SPOILED', 'UNDERVOTES', 'OVERVOTES'))
+    type VARCHAR(64) PRIMARY KEY CHECK (type IN ('OTHER', 'SPOILED', 'UNDERVOTES', 'OVERVOTES'))
 );
 
 /*
