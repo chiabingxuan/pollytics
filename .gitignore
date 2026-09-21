@@ -28,10 +28,10 @@ share/python-wheels/
 *.egg
 
 # Virtual environments
-.venv/
-venv/
-env/
-ENV/
+**/.venv/
+**/venv/
+**/env/
+**/ENV/
 
 # =========================
 # Environment / Secrets
