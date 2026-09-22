@@ -1,0 +1,11 @@
+[project]
+name = "api"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard]>=0.141.1",
+    "geojson>=3.3.0",
+    "pydantic-geojson>=0.3.2",
+    "python-dotenv>=1.2.3",
+    "supabase>=2.31.0",
+]
