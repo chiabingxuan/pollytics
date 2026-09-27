@@ -1,42 +1,48 @@
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Path, Query
-import json
+from fastapi import FastAPI, Path, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic_geojson import FeatureModel, FeatureCollectionModel
 from models import Division, Election, OtherResults, ParticipationResults, Region, Results
 import os
 from supabase import create_client, Client
 from typing import Annotated, Literal
+from whitelist import ALLOWED_ORIGINS
 
 load_dotenv()
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
 
-@app.get("/elections/")
+@app.get("/api/elections/")
 async def get_elections(
-    election_id_lower_bound: Annotated[int, Query(description="The smallest election ID to retrieve", alias="low", ge=1)],
-    election_id_upper_bound: Annotated[int, Query(description="The largest election ID to retrieve", alias="high")],
-) -> list[Election]:
-    # Check if id bounds are valid
-    if election_id_lower_bound > election_id_upper_bound:
-        raise HTTPException(
-            status_code=400,
-            detail="Lower bound of election ID should not be greater than upper bound of election ID"
-        )
-
-    # Get elections whose ids fall within the specified range
-    response = supabase.table("elections") \
+    after: Annotated[int | None, Query(description="Only retrieve elections with an ID greater than this value", ge=1)] = None,
+    limit: Annotated[int, Query(description="The maximum number of elections to return")] = 5,
+) -> dict[Literal["elections", "has_more"], list[Election] | bool]:    
+    query = supabase.table("elections") \
         .select("id, name, year, countries(name), type") \
-        .gte("id", election_id_lower_bound) \
-        .lte("id", election_id_upper_bound) \
         .order("id", desc=False) \
-        .execute()
+        .limit(limit + 1)   # We retrieve one more election than the limit specified, to see if more results exist
 
-    return [
+    if after is not None:
+        query = query.gt("id", after)
+
+    # Get elections whose ids are greater than the id specified (if any), wrt the limit specified
+    # We will retrieve the elections in ascending order of election id
+    response = query.execute()
+
+    elections = [
         Election(
             id=result["id"],
             name=result["name"],
@@ -46,8 +52,20 @@ async def get_elections(
         ) for result in response.data
     ]
 
+    # Check if more results exist beyond the limit specified
+    # Since we actually queried one more election, check if one more election was indeed obtained
+    has_more = len(elections) > limit
 
-@app.get("/elections/{election_id}")
+    # Remove the extra trailing election queried, if any
+    elections = elections[:limit]
+
+    return {
+        "elections": elections,
+        "has_more": has_more
+    }
+
+
+@app.get("/api/elections/{election_id}")
 async def get_division_results(
     election_id: Annotated[int, Path(description="The election ID to retrieve division results from", ge=1)]
 ) -> list[dict[Literal["division", "results"], Division | dict[Literal["participations", "other"], list[Results]]]]:
@@ -119,7 +137,7 @@ async def get_division_results(
     ]
 
 
-@app.get("/elections/{election_id}/divisions/{division_id}")
+@app.get("/api/elections/{election_id}/divisions/{division_id}")
 async def get_region_results(
     election_id: Annotated[int, Path(description="The election ID to retrieve regional results from", ge=1)],
     division_id: Annotated[int, Path(description="The division ID to retrieve regional results from", ge=1)]
@@ -192,7 +210,7 @@ async def get_region_results(
     ]
 
 
-@app.get("/election_maps/{election_id}")
+@app.get("/api/election_maps/{election_id}")
 async def get_division_maps(
     election_id: Annotated[int, Path(description="The election ID to retrieve division maps from", ge=1)]
 ) -> FeatureCollectionModel:
@@ -214,7 +232,7 @@ async def get_division_maps(
     return FeatureCollectionModel(type="FeatureCollection", features=features)
 
 
-@app.get("/election_maps/{election_id}/div_maps/{division_id}")
+@app.get("/api/election_maps/{election_id}/div_maps/{division_id}")
 async def get_region_maps(
     election_id: Annotated[int, Path(description="The election ID to retrieve regional maps from", ge=1)],
     division_id: Annotated[int, Path(description="The division ID to retrieve regional maps from", ge=1)]
