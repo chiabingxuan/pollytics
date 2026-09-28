@@ -1,0 +1,8 @@
+.about a {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+.about a:hover {
+    color: #dc2626;
+}
