@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Route, Routes } from "react-router-dom";
 import type { Election } from "./types";
-import { fetchElectionsFromApi } from "./api/elections";
+import { fetchElections } from "./api/elections";
 import Header from "./components/Header";
 import Nav from "./components/Nav";
 import About from "./pages/About";
+import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
 import "./App.css";
 
@@ -16,8 +17,8 @@ function App() {
     // Maps each page index -> the last election id on the previous page
     const [pageCursors, setPageCursors] = useState<(number | null)[]>([null]);
 
-    async function handleElectionsFetch(after: number | null, targetPageIdx: number) {
-        const data = await fetchElectionsFromApi(after);
+    async function handleFetchElections(after: number | null, targetPageIdx: number) {
+        const data = await fetchElections(after);
 
         setElections(data.elections);
         setHasMoreElections(data.hasMoreElections);
@@ -39,13 +40,13 @@ function App() {
         // TODO: Handle invalid indices
         const cursor = pageCursors[targetPageIdx];
         
-        await handleElectionsFetch(cursor, targetPageIdx);
+        await handleFetchElections(cursor, targetPageIdx);
         setPageIdx(targetPageIdx);
     }
 
     // When App component first mounts, get the first few elections
     useEffect(() => {
-        handleElectionsFetch(null, 0);
+        handleFetchElections(null, 0);
     }, []);
 
     return (
@@ -66,6 +67,7 @@ function App() {
                             />
                         }
                     />
+                    <Route path="/dashboards/:electionId" element={<Dashboard />} />
                     <Route path="/about" element={<About />} />
                 </Routes>
             </main>
