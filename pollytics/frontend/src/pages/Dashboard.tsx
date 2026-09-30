@@ -1,18 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import type { Election } from "../types";
+import ElectoralMap from "../components/ElectoralMap";
+import ErrorMessage from "../components/ErrorMessage";
 import { fetchElection } from "../api/elections";
-
-function getErrorMsg(msg: string) {
-    return (
-        <div className="error-message">
-            <h2>Something went wrong...</h2>
-            <p>{msg}</p>
-        </div>
-    );
-}
+import type { Election } from "../types";
 
 function Dashboard() {
+    // Since the election id is taken from the URL, it is a string
     const { electionId } = useParams<{ electionId: string }>();
 
     const [election, setElection] = useState<Election | null>(null);
@@ -23,7 +17,10 @@ function Dashboard() {
             setErrorMsg("The election ID is missing from the URL.");
             return;
         }
-
+        
+        // The fetching method accepts election id as a string.
+        // When making the HTTP request, the backend will help check
+        // whether or not this stringified election id is valid.
         fetchElection(electionId)
             .then((election) => {
                 setElection(election);
@@ -39,7 +36,7 @@ function Dashboard() {
 
     // Display error message, if any
     if (errorMsg) {
-        return getErrorMsg(errorMsg);
+        return <ErrorMessage msg={errorMsg}/>;
     }
 
     // Election has not been loaded and there is no error
@@ -50,7 +47,7 @@ function Dashboard() {
     return (
         <>
             <h2>Election Dashboard</h2>
-            <p>Election ID: {election.id}</p>
+            <ElectoralMap electionId={election.id}/>
         </>
     );
 }

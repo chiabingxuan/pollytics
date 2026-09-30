@@ -1,14 +1,20 @@
+import { API_URL } from "./params";
 import type { Election, ElectionsResponse } from "../types";
-const API_URL = "http://127.0.0.1:8000/api";
+
 const MAX_ELECTIONS_PER_PAGE = 5;
 
+// Accepts election id as a string.
+// When making the HTTP request, the backend will help check
+// whether or not this stringified election id is valid.
 export async function fetchElection(electionId: string): Promise<Election> {
     const response = await fetch(`${API_URL}/elections/${electionId}`);
 
     if (!response.ok) {
+        const error = await response.json();
+
         switch (response.status) {
             case 404:
-                throw new Error("This election does not exist.");
+                throw new Error(error.detail);
 
             case 422:
                 throw new Error("The election ID provided is invalid.");
