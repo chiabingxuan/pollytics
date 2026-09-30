@@ -36,6 +36,10 @@ async def get_election_response(election_id):
     if not response.data:
         return None
 
+    assert len(response.data) == 1, (
+        "Querying elections table with an id should return a single row, but it did not"
+    )
+
     [election_json,] = response.data
 
     return election_json
@@ -106,7 +110,7 @@ async def get_election(
 ) -> Election:
     election_json_retrieved = await get_election_response(election_id)
     if election_json_retrieved is None:
-        raise HTTPException(404, "Election not found")
+        raise HTTPException(404, "This election does not exist.")
 
     return Election(
         id=election_json_retrieved["id"],
@@ -123,7 +127,7 @@ async def get_division_results(
 ) -> list[dict[Literal["division", "results"], Division | dict[Literal["participations", "other"], list[Results]]]]:
     election_json_retrieved = await get_election_response(election_id)
     if election_json_retrieved is None:
-        raise HTTPException(404, "Election not found")
+        raise HTTPException(404, "This election does not exist.")
     
     # For each race in the election, get vote counts of each known participation
     participation_results_response = supabase.rpc(
@@ -139,7 +143,7 @@ async def get_division_results(
 
     # Maps each division to a dictionary of "participations" -> list of participation results
     # and "other" -> list of other results
-    division_results = dict()
+    division_results = {}
 
     # Add in participation vote counts to mapping
     for result in participation_results_response.data:
@@ -157,10 +161,10 @@ async def get_division_results(
         )
 
         if division not in division_results:
-            division_results[division] = dict()
-
-        if "participations" not in division_results[division]:
-            division_results[division]["participations"] = list()
+            division_results[division] = {
+                "participations": list(),
+                "other": list()
+            }
 
         division_results[division]["participations"].append(formatted_result)
 
@@ -178,10 +182,10 @@ async def get_division_results(
         )
 
         if division not in division_results:
-            division_results[division] = dict()
-
-        if "other" not in division_results[division]:
-            division_results[division]["other"] = list()
+            division_results[division] = {
+                "participations": list(),
+                "other": list()
+            }
 
         division_results[division]["other"].append(formatted_result)
 
@@ -207,13 +211,13 @@ async def get_region_results(
 ) -> list[dict[Literal["region", "results"], Region | dict[Literal["participations", "other"], list[Results]]]]:
     election_json_retrieved = await get_election_response(election_id)
     if election_json_retrieved is None:
-        raise HTTPException(404, "Election not found")
+        raise HTTPException(404, "This election does not exist.")
     
     if not await does_division_exist(division_id):
-        raise HTTPException(404, "Division not found")
+        raise HTTPException(404, "This division does not exist.")
 
     if not await does_race_exist(election_id, division_id):
-        raise HTTPException(404, "Division is not associated with this election")
+        raise HTTPException(404, "This division is not associated with this election.")
     
     # For each region in the division, get vote counts of each known participation (for this election)
     participation_results_response = supabase.rpc(
@@ -247,10 +251,10 @@ async def get_region_results(
         )
 
         if region not in region_results:
-            region_results[region] = dict()
-
-        if "participations" not in region_results[region]:
-            region_results[region]["participations"] = list()
+            region_results[region] = {
+                "participations": list(),
+                "other": list()
+            }
 
         region_results[region]["participations"].append(formatted_result)
 
@@ -268,10 +272,10 @@ async def get_region_results(
         )
 
         if region not in region_results:
-            region_results[region] = dict()
-
-        if "other" not in region_results[region]:
-            region_results[region]["other"] = list()
+            region_results[region] = {
+                "participations": list(),
+                "other": list()
+            }
 
         region_results[region]["other"].append(formatted_result)
 
@@ -288,7 +292,7 @@ async def get_region_results(
         raise HTTPException(
             404,
             "No regional results were found for this division, "
-            + "even though it is involved with this election"
+            + "even though it is involved with this election."
         )
 
     return region_results_list
@@ -300,7 +304,7 @@ async def get_division_maps(
 ) -> FeatureCollectionModel:
     election_json_retrieved = await get_election_response(election_id)
     if election_json_retrieved is None:
-        raise HTTPException(404, "Election not found")
+        raise HTTPException(404, "This election does not exist.")
     
     response = supabase.rpc(
         "get_division_geometry",
@@ -308,14 +312,14 @@ async def get_division_maps(
     ).execute()
 
     if not response.data:
-        raise HTTPException(404, "No division maps were found for this election")
+        raise HTTPException(404, "No division maps were found for this election.")
 
     # Create GeoJSON Features
     features = [
         FeatureModel(
             type="Feature",
             geometry=row["geometry"],
-            properties={"id": row["division_id"], "name": row["division_name"]}
+            properties={"id": row["division_id"]}
         )
         for row in response.data
     ]
@@ -331,13 +335,13 @@ async def get_region_maps(
     # Check if election id exists in the database
     election_json_retrieved = await get_election_response(election_id)
     if election_json_retrieved is None:
-        raise HTTPException(404, "Election not found")
+        raise HTTPException(404, "This election does not exist.")
 
     if not await does_division_exist(division_id):
-        raise HTTPException(404, "Division not found")
+        raise HTTPException(404, "This division does not exist.")
 
     if not await does_race_exist(election_id, division_id):
-        raise HTTPException(404, "Division is not associated with this election")
+        raise HTTPException(404, "This division is not associated with this election.")
     
     response = supabase.rpc(
         "get_region_geometry",
@@ -348,7 +352,7 @@ async def get_region_maps(
         raise HTTPException(
             404,
             "No regional maps were found for this division, "
-            + "even though it is involved with this election"
+            + "even though it is involved with this election."
         )
 
     # Create GeoJSON Features
@@ -356,7 +360,7 @@ async def get_region_maps(
         FeatureModel(
             type="Feature",
             geometry=row["geometry"],
-            properties={"id": row["region_id"], "name": row["region_name"]}
+            properties={"id": row["region_id"]}
         )
         for row in response.data
     ]
