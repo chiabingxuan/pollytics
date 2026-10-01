@@ -20,7 +20,7 @@ function ElectionPanel({
 }: ElectionPanelProps) {
     return (
         <section className="election-panel">
-            <h2>Elections to Explore</h2>
+            <h2>Elections</h2>
 
             {/* List details of each election here */}
             <ul className="election-list">

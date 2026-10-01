@@ -1,38 +1,27 @@
 import { useEffect, useState } from "react";
+import type { LeafletMouseEvent, Path } from "leaflet";
 import { GeoJSON, MapContainer, TileLayer } from "react-leaflet";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 import ErrorMessage from "./ErrorMessage";
+import SelectedSidebar from "./SelectedSidebar";
 import { fetchDivisionResults } from "../api/results";
 import { fetchDivisionMaps } from "../api/maps";
-import type { DivisionResult, PaneProperties } from "../types";
+import type { DivisionResult, Pane } from "../types";
 import "leaflet/dist/leaflet.css";
+import "./Dashboard.css";
 
-const MAP_ATTRIBUTION: string = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-const MAP_URL ="https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+export const DEFAULT_COLOR: string = "#6B7280";
 
-interface ElectoralMapProps {
+interface DashboardProps {
     electionId: number;
 }
 
-function replaceWithOtherColor(color: string | null): string {
-    const OTHER_COLOR: string = "#6B7280"; // colour used for other voting categories
-    if (color === null) {
-        return OTHER_COLOR;
-    }
-
-    return color;
-}
-
-function formatDivisionFeature(divRes: DivisionResult, divFeature: Feature): Feature<Geometry, PaneProperties> {
-    // Pool all the vote counts for this division and replace empty colours with default colour
+function formatDivisionFeature(divRes: DivisionResult, divFeature: Feature): Feature<Geometry, Pane> {
+    // Pool all the vote counts for this division and find total votes
     const allResults = [
         ...divRes.results.participations,
         ...divRes.results.other
-    ].map((result) => ({
-        ...result,
-        color: replaceWithOtherColor(result.color)
-    }));
-
+    ]
     const totalVotes = allResults.reduce(
         (total, result) => total + result.votes,
         0
@@ -85,7 +74,7 @@ function formatDivisionFeature(divRes: DivisionResult, divFeature: Feature): Fea
 function getGeoJson(
     divisionResults: DivisionResult[],
     divisionMaps: FeatureCollection
-): FeatureCollection<Geometry, PaneProperties> {
+): FeatureCollection<Geometry, Pane> {
     // This should not happen
     if (divisionResults.length !== divisionMaps.features.length) {
         throw new Error (
@@ -106,7 +95,7 @@ function getGeoJson(
     });
 
     // Make new GeoJSON with division details, results and geometry
-    const geoJson: FeatureCollection<Geometry, PaneProperties> = {
+    const geoJson: FeatureCollection<Geometry, Pane> = {
         type: "FeatureCollection",
         features: []
     };
@@ -127,104 +116,87 @@ function getGeoJson(
         const formattedDivFeature = formatDivisionFeature(divRes, divFeature);
 
         geoJson.features.push(formattedDivFeature);
-
     }
 
     return geoJson;
 }
 
 function getColorFromWinningProportion(
-    color: string,
+    color: string | null,
     winningProportion: number
 ): string {
-    // Colour is in hexadecimal.
-    const r = parseInt(color.slice(1, 3), 16);
-    const g = parseInt(color.slice(3, 5), 16);
-    const b = parseInt(color.slice(5, 7), 16);
+    // Give default colour if the category doesn't have an associated colouR
+    const baseColor = color ?? DEFAULT_COLOR;
+
+    // Colour is in hexadecimal
+    const r = parseInt(baseColor.slice(1, 3), 16);
+    const g = parseInt(baseColor.slice(3, 5), 16);
+    const b = parseInt(baseColor.slice(5, 7), 16);
 
     // Either white or black.
     // If proportion is low, shift colour to white (255); otherwise, shift to black (0)
     let target: number;
 
     // The extent (0-1) to which we shift the colour to the target identified
-    let factor: number;
+    let shiftFactor: number;
 
     if (winningProportion < 0.50) {
         // <50%: very light
         target = 255;
-        factor = 0.8;
+        shiftFactor = 0.8;
     } else if (winningProportion < 0.60) {
         // 50–60%: light
         target = 255;
-        factor = 0.4;
+        shiftFactor = 0.4;
     } else if (winningProportion < 0.70) {
         // 60–70%: original colour
         target = 255;
-        factor = 0;
+        shiftFactor = 0;
     } else if (winningProportion < 0.80) {
         // 70–80%: dark
         target = 0;
-        factor = 0.4;
+        shiftFactor = 0.4;
     } else if (winningProportion < 0.90) {
         // 80–90%: very dark
         target = 0;
-        factor = 0.7;
+        shiftFactor = 0.7;
     } else {
         // 90–100%: darkest
         target = 0;
-        factor = 0.9;
+        shiftFactor = 0.9;
     }
 
-    const newR = Math.round(r + (target - r) * factor);
-    const newG = Math.round(g + (target - g) * factor);
-    const newB = Math.round(b + (target - b) * factor);
+    const newR = Math.round(r + (target - r) * shiftFactor);
+    const newG = Math.round(g + (target - g) * shiftFactor);
+    const newB = Math.round(b + (target - b) * shiftFactor);
 
     return `rgb(${newR}, ${newG}, ${newB})`;
 }
 
-function getMapContainer(geoJson: FeatureCollection<Geometry, PaneProperties>) {
-    const style = (feature: Feature<Geometry, PaneProperties> | undefined) => {
-        // Required by React Leaflet's StyleFunction type
-        if (!feature) {
-            return {};
-        }
-
-        return ({
-            fillColor: getColorFromWinningProportion(
-                feature.properties.winningColor,
-                feature.properties.winningProportion
-            ),
-            weight: 1,
-            opacity: 1,
-            color: "black",
-            fillOpacity: 0.8
-        });
-    };
-
-    const mapStyle = {
-        height: "100vh",
-        width: "100%",
-        margin: "0 auto",
+function getPaneStyle(feature: Feature<Geometry, Pane> | undefined) {
+    // Required by React Leaflet's StyleFunction type
+    if (!feature) {
+        return {};
     }
 
-    return (
-        <MapContainer 
-            center={[39.8283, -98.5795]}
-            zoom={4}
-            scrollWheelZoom={true}
-            style={mapStyle}
-        >
-            <TileLayer
-                attribution={MAP_ATTRIBUTION}
-                url={MAP_URL}
-            />
-            <GeoJSON data={geoJson} style={style}/>
-        </MapContainer>
-    );
+    return ({
+        fillColor: getColorFromWinningProportion(
+            feature.properties.winningColor,
+            feature.properties.winningProportion
+        ),
+        weight: 1,
+        opacity: 1,
+        color: "black",
+        fillOpacity: 0.8
+    });
 }
 
-function ElectoralMap({ electionId }: ElectoralMapProps) {
-    const [geoJson, setGeoJson] = useState<FeatureCollection<Geometry, PaneProperties> | null>(null);
+function Dashboard({ electionId }: DashboardProps) {
+    const MAP_ATTRIBUTION: string = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+    const MAP_URL ="https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+
+    const [geoJson, setGeoJson] = useState<FeatureCollection<Geometry, Pane> | null>(null);
+    const [selectedPane, setSelectedPane] = useState<Pane | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     useEffect(() => {
@@ -255,7 +227,61 @@ function ElectoralMap({ electionId }: ElectoralMapProps) {
         return <p>Loading...</p>;
     }
 
-    return getMapContainer(geoJson);
+    // When mouse hovers above a pane, we highlight the pane
+    const highlightPane = (e: LeafletMouseEvent) => {
+        const layer = e.target as Path & {
+            feature: Feature<Geometry, Pane>;
+        };
+
+        setSelectedPane(layer.feature.properties);
+
+        // Change to a highlighted style
+        layer.setStyle({
+            weight: 3,
+            fillOpacity: 1
+        });
+    };
+
+    // When mouse no longers hovers above pane, do not highlight it anymore
+    const resetHighlight = ((e: LeafletMouseEvent) => {
+        const layer = e.target as Path & {
+            feature: Feature<Geometry, Pane>;
+        };
+
+        setSelectedPane(null);
+        e.target.setStyle(getPaneStyle(layer.feature));
+    })
+
+    // Handles mouse hovering on the pane, if any
+    const onEachPane = (_feature: Feature<Geometry, Pane>, layer: Path) => {
+        layer.on({
+            mouseover: highlightPane,
+            mouseout: resetHighlight,
+        });
+    }
+
+    const mapStyle = {
+        height: "100%",
+        width: "100%"
+    }
+
+    return (
+        <div className="dashboard">
+            <SelectedSidebar pane={selectedPane}/>
+            <MapContainer 
+                center={[39.8283, -98.5795]}
+                zoom={4}
+                scrollWheelZoom={true}
+                style={mapStyle}
+            >
+                <TileLayer
+                    attribution={MAP_ATTRIBUTION}
+                    url={MAP_URL}
+                />
+                <GeoJSON data={geoJson} style={getPaneStyle} onEachFeature={onEachPane}/>
+            </MapContainer>
+        </div>
+    );
 }
 
-export default ElectoralMap;
+export default Dashboard;

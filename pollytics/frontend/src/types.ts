@@ -17,30 +17,41 @@ export interface Division {
     type: string;
 }
 
-export interface Results {
+export interface Region {
+    id: number;
+    name: string;
+    type: string;
+}
+
+// API result data types
+export interface Result {
     name: string;
     color: string | null;
     votes: number;
-    percentage: number;
 }
 
-export interface ParticipationResults extends Results {
+export interface ParticipationResult extends Result {
     party: string | null;
 }
 
 export interface DivisionResult {
     division: Division;
     results: {
-        participations: ParticipationResults[];
-        other: Results[];
+        participations: ParticipationResult[];
+        other: Result[];
     };
 }
 
-export interface PaneProperties {
+// Result data types after frontend processing
+export interface PaneResult extends Result {
+    proportion: number; // vote share as a value from 0 to 1
+}
+
+export interface Pane {
     id: number;
     name: string;
     type: string;
-    winningColor: string;
+    winningColor: string | null;
     winningProportion: number;
-    results: Results[];
+    results: PaneResult[];
 }

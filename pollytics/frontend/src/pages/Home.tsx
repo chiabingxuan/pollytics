@@ -17,13 +17,15 @@ function Home({
     onPageChange,
 }: HomeProps) {
     return (
-        <ElectionPanel
-            elections={elections}
-            pageIdx={pageIdx}
-            pageCursors={pageCursors}
-            hasMore={hasMore}
-            onPageChange={onPageChange}
-        />
+        <section>
+            <ElectionPanel
+                elections={elections}
+                pageIdx={pageIdx}
+                pageCursors={pageCursors}
+                hasMore={hasMore}
+                onPageChange={onPageChange}
+            />
+        </section>
     );
 }
 

@@ -1,0 +1,21 @@
+.sidebar {
+    width: 400px;
+    padding: 16px;
+    background: white;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
+    overflow-y: auto;
+    text-align: center;
+}
+
+.sidebar table {
+    margin: 0 auto;
+    border-spacing: 24px 0;
+}
+
+.result-color {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 6px;
+}
