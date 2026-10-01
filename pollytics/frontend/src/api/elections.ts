@@ -1,8 +1,6 @@
 import { API_URL } from "./params";
 import type { Election, ElectionsResponse } from "../types";
 
-const MAX_ELECTIONS_PER_PAGE = 5;
-
 // Accepts election id as a string.
 // When making the HTTP request, the backend will help check
 // whether or not this stringified election id is valid.
@@ -30,6 +28,8 @@ export async function fetchElection(electionId: string): Promise<Election> {
 }
 
 export async function fetchElections(after: number | null): Promise<ElectionsResponse> {
+    const MAX_ELECTIONS_PER_PAGE = 5;
+    
     const params = new URLSearchParams({
         limit: MAX_ELECTIONS_PER_PAGE.toString()
     });

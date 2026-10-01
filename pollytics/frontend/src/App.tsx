@@ -3,8 +3,8 @@ import { Route, Routes } from "react-router-dom";
 import Header from "./components/Header";
 import Nav from "./components/Nav";
 import About from "./pages/About";
-import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
+import IndivElection from "./pages/IndivElection";
 import { fetchElections } from "./api/elections";
 import type { Election } from "./types";
 import "./App.css";
@@ -63,7 +63,7 @@ function App() {
                             />
                         }
                     />
-                    <Route path="/dashboards/:electionId" element={<Dashboard />} />
+                    <Route path="/dashboards/:electionId" element={<IndivElection />} />
                     <Route path="/about" element={<About />} />
                 </Routes>
             </main>

@@ -1,0 +1,12 @@
+.dashboard {
+    display: flex;
+    width: 100%;
+    max-width: 1400px;
+    height: 700px;
+    margin: 24px auto;
+}
+
+.dashboard .leaflet-container {
+    flex: 1;
+    min-width: 0;
+}
