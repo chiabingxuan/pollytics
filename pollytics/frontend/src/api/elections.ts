@@ -1,5 +1,6 @@
 import { API_URL } from "./params";
 import type { Election, ElectionsResponse } from "../types";
+import { APIError } from "../utils/APIError";
 
 // Accepts election id as a string.
 // When making the HTTP request, the backend will help check
@@ -12,13 +13,13 @@ export async function fetchElection(electionId: string): Promise<Election> {
 
         switch (response.status) {
             case 404:
-                throw new Error(error.detail);
+                throw new APIError(error.detail.code, error.detail.message);
 
             case 422:
-                throw new Error("The election ID provided is invalid.");
+                throw new APIError("INVALID_INPUTS", "The election ID provided is invalid.");
 
             default:
-                throw new Error("Failed to fetch election data.");
+                throw new APIError("DEFAULT_FETCH_ERROR", "Failed to fetch election data.");
         }
     }
 
@@ -41,7 +42,7 @@ export async function fetchElections(after: number | null): Promise<ElectionsRes
     const response = await fetch(`${API_URL}/elections/?${params}`);
 
     if (!response.ok) {
-        throw new Error("Failed to fetch elections");
+        throw new APIError("DEFAULT_FETCH_ERROR", "Failed to fetch elections.");
     }
 
     const data = await response.json();

@@ -110,7 +110,13 @@ async def get_election(
 ) -> Election:
     election_json_retrieved = await get_election_response(election_id)
     if election_json_retrieved is None:
-        raise HTTPException(404, "This election does not exist.")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "ELECTION_NOT_FOUND",
+                "message": "This election does not exist."
+            }
+        )
 
     return Election(
         id=election_json_retrieved["id"],
@@ -127,7 +133,13 @@ async def get_division_results(
 ) -> list[dict[Literal["division", "results"], Division | dict[Literal["participations", "other"], list[ParticipationResults | OtherResults]]]]:
     election_json_retrieved = await get_election_response(election_id)
     if election_json_retrieved is None:
-        raise HTTPException(404, "This election does not exist.")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "ELECTION_NOT_FOUND",
+                "message": "This election does not exist."
+            }
+        )
     
     # For each race in the election, get vote counts of each known participation
     participation_results_response = supabase.rpc(
@@ -211,13 +223,31 @@ async def get_region_results(
 ) -> list[dict[Literal["region", "results"], Region | dict[Literal["participations", "other"], list[ParticipationResults | OtherResults]]]]:
     election_json_retrieved = await get_election_response(election_id)
     if election_json_retrieved is None:
-        raise HTTPException(404, "This election does not exist.")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "ELECTION_NOT_FOUND",
+                "message": "This election does not exist."
+            }
+        )
     
     if not await does_division_exist(division_id):
-        raise HTTPException(404, "This division does not exist.")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "DIVISION_NOT_FOUND",
+                "message": "This division does not exist."
+            }
+        )
 
     if not await does_race_exist(election_id, division_id):
-        raise HTTPException(404, "This division is not associated with this election.")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "RACE_NOT_FOUND",
+                "message": "This division is not associated with this election."
+            }
+        )
     
     # For each region in the division, get vote counts of each known participation (for this election)
     participation_results_response = supabase.rpc(
@@ -290,9 +320,12 @@ async def get_region_results(
     # even though this division is involved with this election
     if not region_results_list:
         raise HTTPException(
-            404,
-            "No regional results were found for this division, "
-            + "even though it is involved with this election."
+            status_code=404,
+            detail={
+                "code": "REGION_DATA_NOT_FOUND",
+                "message": "No regional results were found for this division, "
+                    + "even though it is involved with this election."
+            }
         )
 
     return region_results_list
@@ -304,7 +337,13 @@ async def get_division_maps(
 ) -> FeatureCollectionModel:
     election_json_retrieved = await get_election_response(election_id)
     if election_json_retrieved is None:
-        raise HTTPException(404, "This election does not exist.")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "ELECTION_NOT_FOUND",
+                "message": "This election does not exist."
+            }
+        )
     
     response = supabase.rpc(
         "get_division_geometry",
@@ -312,7 +351,13 @@ async def get_division_maps(
     ).execute()
 
     if not response.data:
-        raise HTTPException(404, "No division maps were found for this election.")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "DIVISION_MAPS_NOT_FOUND",
+                "message": "No division maps were found for this election."
+            }
+        )
 
     # Create GeoJSON Features
     features = [
@@ -335,13 +380,31 @@ async def get_region_maps(
     # Check if election id exists in the database
     election_json_retrieved = await get_election_response(election_id)
     if election_json_retrieved is None:
-        raise HTTPException(404, "This election does not exist.")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "ELECTION_NOT_FOUND",
+                "message": "This election does not exist."
+            }
+        )
 
     if not await does_division_exist(division_id):
-        raise HTTPException(404, "This division does not exist.")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "DIVISION_NOT_FOUND",
+                "message": "This division does not exist."
+            }
+        )
 
     if not await does_race_exist(election_id, division_id):
-        raise HTTPException(404, "This division is not associated with this election.")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "RACE_NOT_FOUND",
+                "message": "This division is not associated with this election."
+            }
+        )
     
     response = supabase.rpc(
         "get_region_geometry",
@@ -350,9 +413,12 @@ async def get_region_maps(
 
     if not response.data:
         raise HTTPException(
-            404,
-            "No regional maps were found for this division, "
-            + "even though it is involved with this election."
+            status_code=404,
+            detail={
+                "code": "REGION_DATA_NOT_FOUND",
+                "message": "No regional maps were found for this division, "
+                    + "even though it is involved with this election."
+            }
         )
 
     # Create GeoJSON Features

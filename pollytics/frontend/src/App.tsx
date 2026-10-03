@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Route, Routes } from "react-router-dom";
+import ErrorMessage from "./components/ErrorMessage";
 import Header from "./components/Header";
 import Nav from "./components/Nav";
 import About from "./pages/About";
@@ -7,31 +8,38 @@ import Home from "./pages/Home";
 import IndivElection from "./pages/IndivElection";
 import { fetchElections } from "./api/elections";
 import type { Election } from "./types";
+import type { APIError } from "./utils/APIError";
 import "./App.css";
 
 function App() {
+    // TODO: Move these into Home instead. Then the error handling can be done in home too
     const [elections, setElections] = useState<Election[]>([]);
     const [hasMoreElections, setHasMoreElections] = useState<boolean>(false);
     const [pageIdx, setPageIdx] = useState(0);
     const [pageCursors, setPageCursors] = useState<(number | null)[]>([null]); // maps each page index -> the last election id on the previous page
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     async function handleFetchElections(after: number | null, targetPageIdx: number) {
-        const data = await fetchElections(after);
+        fetchElections(after)
+            .then((electionsResponse) => {
+                setElections(electionsResponse.elections);
+                setHasMoreElections(electionsResponse.hasMoreElections);
 
-        setElections(data.elections);
-        setHasMoreElections(data.hasMoreElections);
+                if (electionsResponse.elections.length > 0) {
+                    const lastId = electionsResponse.elections[electionsResponse.elections.length - 1].id;
 
-        if (data.elections.length > 0) {
-            const lastId = data.elections[data.elections.length - 1].id;
-
-            // Store the cursor for the following page.
-            // The cursor is the last election ID from the current page.
-            setPageCursors((currentCursors) => {
-                const newCursors = [...currentCursors];
-                newCursors[targetPageIdx + 1] = lastId;
-                return newCursors;
+                    // Store the cursor for the following page.
+                    // The cursor is the last election ID from the current page.
+                    setPageCursors((currentCursors) => {
+                        const newCursors = [...currentCursors];
+                        newCursors[targetPageIdx + 1] = lastId;
+                        return newCursors;
+                    })
+                }
             })
-        }
+            .catch((error: APIError) => {
+                setErrorMsg(error.message);
+            });
     }
 
     async function goToPage(targetPageIdx: number) {
@@ -44,6 +52,10 @@ function App() {
     useEffect(() => {
         handleFetchElections(null, 0);
     }, []);
+
+    if (errorMsg) {
+        return <ErrorMessage msg={errorMsg} />;
+    }
 
     return (
         <>

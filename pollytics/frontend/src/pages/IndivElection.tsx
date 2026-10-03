@@ -4,6 +4,7 @@ import Dashboard from "../components/Dashboard";
 import ErrorMessage from "../components/ErrorMessage";
 import { fetchElection } from "../api/elections";
 import type { Election } from "../types";
+import type { APIError } from "../utils/APIError";
 import "./IndivElection.css";
 
 function IndivElection() {
@@ -26,12 +27,8 @@ function IndivElection() {
             .then((election) => {
                 setElection(election);
             })
-            .catch((error) => {
-                if (error instanceof Error) {
-                    setErrorMsg(error.message);
-                } else {
-                    setErrorMsg("An unknown error occurred.");
-                }
+            .catch((error: APIError) => {
+                setErrorMsg(error.message);
             });
     }, [electionId]);
 
