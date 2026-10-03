@@ -1,3 +1,4 @@
+// Election types
 export interface Election {
     id: number;
     name: string;
@@ -11,19 +12,25 @@ export interface ElectionsResponse {
     hasMoreElections: boolean;
 }
 
-export interface Division {
+// Location types
+export interface Location {
     id: number;
     name: string;
+    level: "DIVISION" | "REGION";
     type: string;
 }
 
-export interface Region {
-    id: number;
-    name: string;
-    type: string;
+export interface Division extends Location {
+    level: "DIVISION";
+    type: "COUNTRY" | "STATE" | "CONGRESSIONAL DISTRICT" | "FEDERAL DISTRICT" | "CONSTITUENCY";
 }
 
-// API result data types
+export interface Region extends Location {
+    level: "REGION";
+    type: "COUNTY OR EQUIVALENT" | "PARISH" | "FEDERAL DISTRICT" | "STATE HOUSE DISTRICT";
+}
+
+// Result response types obtained from backend API
 export interface Result {
     name: string;
     color: string | null;
@@ -34,7 +41,7 @@ export interface ParticipationResult extends Result {
     party: string | null;
 }
 
-export interface DivisionResult {
+export interface DivisionResultResponse {
     division: Division;
     results: {
         participations: ParticipationResult[];
@@ -42,7 +49,32 @@ export interface DivisionResult {
     };
 }
 
-// Result data types after frontend processing
+export interface RegionResultResponse {
+    region: Region;
+    results: {
+        participations: ParticipationResult[];
+        other: Result[];
+    };
+}
+
+// Result types to pass into the frontend components
+export interface LocationResult {
+    location: Location;
+    results: {
+        participations: ParticipationResult[];
+        other: Result[];
+    };
+}
+
+export interface DivisionResult extends LocationResult {
+    location: Division;
+}
+
+export interface RegionResult extends LocationResult {
+    location: Region;
+}
+
+// Result types after frontend processing
 export interface PaneResult extends Result {
     party: string | null;
     proportion: number; // vote share as a value from 0 to 1
@@ -51,6 +83,7 @@ export interface PaneResult extends Result {
 export interface Pane {
     id: number;
     name: string;
+    level: "DIVISION" | "REGION";
     type: string;
     winningColor: string | null;
     winningProportion: number;

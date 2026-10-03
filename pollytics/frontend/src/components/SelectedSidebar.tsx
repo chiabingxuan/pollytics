@@ -1,19 +1,14 @@
 import type { Pane } from "../types";
-import { DEFAULT_COLOR } from "./Dashboard";
+import { DEFAULT_COLOR } from "../utils/mapUtils";
 import "./SelectedSidebar.css";
 
 interface SelectedSidebarProps {
-    pane: Pane | null;
+    selectedDivisionPane: Pane | null;
+    hoveredLocationPane: Pane | null;
+    onBack: () => void;
 }
 
-function getSidebar(pane: Pane | null) {
-    // No pane is being hovered over
-    if (!pane) {
-        return (
-            <p>Hover over a location to view its results.</p>
-        );
-    }
-
+function getResultsDisplay(pane: Pane) {
     // Based on the place associated with the pane, display details in the sidebar
     return (
         <>
@@ -47,10 +42,42 @@ function getSidebar(pane: Pane | null) {
     );
 }
 
-function SelectedSidebar({ pane }: SelectedSidebarProps) {
+function getSelectedDivisionDisplay(selectedDivisionPane: Pane | null, onBack: () => void) {
+    return selectedDivisionPane && (
+        <>
+            <button className="back-button" onClick={onBack}>Back to main view</button>
+            {getResultsDisplay(selectedDivisionPane)}
+            <hr />
+        </>
+    )
+
+}
+
+function getHoveredRegionDisplay(selectedDivisionPane: Pane | null, hoveredLocationPane: Pane | null) {
+    if (!hoveredLocationPane) {
+        return (
+            <p>Hover over a location to view its results.</p>
+        );
+    }
+
+    return (
+        <>
+            {getResultsDisplay(hoveredLocationPane)}
+            {/* If no division has been selected, the hovered location is a division as well.
+                Add a prompt to ask user to click into the division */}
+            {!selectedDivisionPane && (
+                <p>Click to view regional results (if they are available).</p>
+            )} 
+        </>
+    );
+}
+
+function SelectedSidebar({ selectedDivisionPane, hoveredLocationPane, onBack }: SelectedSidebarProps) {
     return (
         <aside className="sidebar">
-            {getSidebar(pane)}
+            {/* If there has been a division selected, show the division results at the top of the sidebar */}
+            {getSelectedDivisionDisplay(selectedDivisionPane, onBack)}
+            {getHoveredRegionDisplay(selectedDivisionPane, hoveredLocationPane)}
         </aside>
     );
 }

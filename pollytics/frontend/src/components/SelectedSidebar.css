@@ -7,6 +7,12 @@
     text-align: center;
 }
 
+.sidebar hr {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 20px 0;
+}
+
 .sidebar table {
     margin: 0 auto;
     border-spacing: 24px 0;
@@ -32,4 +38,17 @@
 .result-party {
     font-size: 0.85em;
     color: #6b7280;
+}
+
+.back-button {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    padding: 8px 12px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.back-button:hover {
+    background: #f3f4f6;
 }
