@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
+import L from "leaflet";
 import type { LeafletMouseEvent, Path } from "leaflet";
-import { GeoJSON, MapContainer, TileLayer } from "react-leaflet";
+import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 import ErrorMessage from "./ErrorMessage";
 import SelectedSidebar from "./SelectedSidebar";
 import { fetchDivisionResults } from "../api/results";
 import { fetchDivisionMaps } from "../api/maps";
 import type { DivisionResult, Pane } from "../types";
+import { fixAntimeridian } from "../utils/antimeridianFix";
 import "leaflet/dist/leaflet.css";
 import "./Dashboard.css";
 
@@ -20,8 +22,15 @@ function formatDivisionFeature(divRes: DivisionResult, divFeature: Feature): Fea
     // Pool all the vote counts for this division and find total votes
     const allResults = [
         ...divRes.results.participations,
-        ...divRes.results.other
+        // Other results do not have a party, so we add a null party here.
+        // This gives participation results and other results the same structure,
+        // allowing them to be handled uniformly when displayed in the sidebar.
+        ...divRes.results.other.map((result) => ({
+            ...result,
+            party: null
+        }))
     ]
+
     const totalVotes = allResults.reduce(
         (total, result) => total + result.votes,
         0
@@ -118,7 +127,7 @@ function getGeoJson(
         geoJson.features.push(formattedDivFeature);
     }
 
-    return geoJson;
+    return fixAntimeridian(geoJson);
 }
 
 function getColorFromWinningProportion(
@@ -191,6 +200,21 @@ function getPaneStyle(feature: Feature<Geometry, Pane> | undefined) {
     });
 }
 
+// Get bounds of the GeoJSON and use it shift the map view, enabling all the panes to be captured.
+// This means we do not need to hard code the centre of the map
+function FitMapToGeoJson({ geoJson }: { geoJson: FeatureCollection }) {
+    const map = useMap();
+
+    useEffect(() => {
+        const layer = L.geoJSON(geoJson);
+        if (layer.getBounds().isValid()) {
+            map.fitBounds(layer.getBounds());
+        }
+    }, [geoJson, map]);
+
+    return null;
+}
+
 function Dashboard({ electionId }: DashboardProps) {
     const MAP_ATTRIBUTION: string = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
     const MAP_URL ="https://tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -205,8 +229,8 @@ function Dashboard({ electionId }: DashboardProps) {
             fetchDivisionMaps(electionId),
         ])
             .then(([divisionResults, divisionMaps]) => {
-                const formmattedGeoJson = getGeoJson(divisionResults, divisionMaps);
-                setGeoJson(formmattedGeoJson);
+                const formattedGeoJson = getGeoJson(divisionResults, divisionMaps);
+                setGeoJson(formattedGeoJson);
             })
             .catch((error) => {
                 if (error instanceof Error) {
@@ -269,8 +293,8 @@ function Dashboard({ electionId }: DashboardProps) {
         <div className="dashboard">
             <SelectedSidebar pane={selectedPane}/>
             <MapContainer 
-                center={[39.8283, -98.5795]}
-                zoom={4}
+                center={[0, 0]} // placeholder coordinates
+                zoom={6}
                 scrollWheelZoom={true}
                 style={mapStyle}
             >
@@ -279,6 +303,7 @@ function Dashboard({ electionId }: DashboardProps) {
                     url={MAP_URL}
                 />
                 <GeoJSON data={geoJson} style={getPaneStyle} onEachFeature={onEachPane}/>
+                <FitMapToGeoJson geoJson={geoJson} />
             </MapContainer>
         </div>
     );

@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic_geojson import FeatureModel, FeatureCollectionModel
-from models import Division, Election, OtherResults, ParticipationResults, Region, Results
+from models import Division, Election, OtherResults, ParticipationResults, Region
 import os
 from supabase import create_client, Client
 from typing import Annotated, Literal
@@ -124,7 +124,7 @@ async def get_election(
 @app.get("/api/election_results/{election_id}")
 async def get_division_results(
     election_id: Annotated[int, Path(description="The election ID to retrieve division results from", ge=1)]
-) -> list[dict[Literal["division", "results"], Division | dict[Literal["participations", "other"], list[Results]]]]:
+) -> list[dict[Literal["division", "results"], Division | dict[Literal["participations", "other"], list[ParticipationResults | OtherResults]]]]:
     election_json_retrieved = await get_election_response(election_id)
     if election_json_retrieved is None:
         raise HTTPException(404, "This election does not exist.")
@@ -208,7 +208,7 @@ async def get_division_results(
 async def get_region_results(
     election_id: Annotated[int, Path(description="The election ID to retrieve regional results from", ge=1)],
     division_id: Annotated[int, Path(description="The division ID to retrieve regional results from", ge=1)]
-) -> list[dict[Literal["region", "results"], Region | dict[Literal["participations", "other"], list[Results]]]]:
+) -> list[dict[Literal["region", "results"], Region | dict[Literal["participations", "other"], list[ParticipationResults | OtherResults]]]]:
     election_json_retrieved = await get_election_response(election_id)
     if election_json_retrieved is None:
         raise HTTPException(404, "This election does not exist.")

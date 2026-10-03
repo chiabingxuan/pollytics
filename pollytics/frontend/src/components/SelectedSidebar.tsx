@@ -32,6 +32,9 @@ function getSidebar(pane: Pane | null) {
                                     style={{ backgroundColor: result.color ?? DEFAULT_COLOR }}
                                 />
                                 {result.name}
+                                {result.party && (
+                                    <div className="result-party">{result.party}</div>
+                                )}
                             </td>
                             {/* toLocaleString() adds commas to vote counts */}
                             <td>{result.votes.toLocaleString()}</td>
