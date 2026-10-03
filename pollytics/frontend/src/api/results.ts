@@ -20,6 +20,6 @@ export async function fetchDivisionResults(electionId: number): Promise<Division
     }
 
     const resultsJson = await response.json();
-
+    
     return resultsJson;
 }

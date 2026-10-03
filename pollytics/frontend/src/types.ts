@@ -44,6 +44,7 @@ export interface DivisionResult {
 
 // Result data types after frontend processing
 export interface PaneResult extends Result {
+    party: string | null;
     proportion: number; // vote share as a value from 0 to 1
 }
 

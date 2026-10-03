@@ -12,10 +12,24 @@
     border-spacing: 24px 0;
 }
 
+.sidebar td:first-child {
+    text-align: left;
+}
+
+.sidebar td:nth-child(2),
+.sidebar td:nth-child(3) {
+    text-align: right;
+}
+
 .result-color {
     display: inline-block;
     width: 10px;
     height: 10px;
     border-radius: 50%;
     margin-right: 6px;
+}
+
+.result-party {
+    font-size: 0.85em;
+    color: #6b7280;
 }
