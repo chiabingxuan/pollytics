@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import type { FeatureCollection, Geometry } from "geojson";
+
 import ElectoralMap from "./ElectoralMap";
 import ErrorMessage from "./ErrorMessage";
 import SelectedSidebar from "./SelectedSidebar";
-import { fetchDivisionResults, fetchRegionResults } from "../api/results";
 import { fetchDivisionMaps, fetchRegionMaps } from "../api/maps";
+import { fetchDivisionResults, fetchRegionResults } from "../api/results";
 import type { Pane } from "../types";
 import type { APIError } from "../utils/APIError";
 import { getGeoJson } from "../utils/geometryUtils";
+
 import "leaflet/dist/leaflet.css";
 import "./Dashboard.css";
 

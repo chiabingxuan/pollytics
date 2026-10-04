@@ -1,4 +1,5 @@
 import type { Feature, FeatureCollection, Geometry } from "geojson";
+
 import type { LocationResult, Pane } from "../types";
 import { fixAntimeridian } from "../utils/antimeridianFix";
 

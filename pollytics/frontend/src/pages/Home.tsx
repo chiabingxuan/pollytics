@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+
+import { fetchElections } from "../api/elections";
 import ElectionPanel from "../components/ElectionPanel";
 import ErrorMessage from "../components/ErrorMessage";
-import { fetchElections } from "../api/elections";
 import type { Election } from "../types";
 import type { APIError } from "../utils/APIError";
 

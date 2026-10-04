@@ -3,8 +3,10 @@ import L from "leaflet";
 import type { LeafletMouseEvent, Path } from "leaflet";
 import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
+
 import type { Pane } from "../types";
 import { DEFAULT_COLOR } from "../utils/colors";
+
 import "leaflet/dist/leaflet.css";
 
 interface ElectoralMapProps {

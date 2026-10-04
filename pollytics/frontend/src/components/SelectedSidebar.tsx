@@ -1,5 +1,6 @@
 import type { Pane } from "../types";
 import { DEFAULT_COLOR } from "../utils/colors";
+
 import "./SelectedSidebar.css";
 
 interface SelectedSidebarProps {

@@ -1,9 +1,11 @@
 import { Route, Routes } from "react-router-dom";
+
 import Header from "./components/Header";
 import Nav from "./components/Nav";
 import About from "./pages/About";
 import Home from "./pages/Home";
 import IndivElection from "./pages/IndivElection";
+
 import "./App.css";
 
 function App() {
