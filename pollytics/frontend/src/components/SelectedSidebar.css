@@ -1,5 +1,5 @@
 .sidebar {
-    font-size: 14px;
+    font-size: 15px;
     width: 400px;
     padding: 16px;
     background: white;
@@ -46,7 +46,7 @@
     border-radius: 6px;
     background: white;
     padding: 8px 12px;
-    font-size: 14px;
+    font-size: 15px;
     cursor: pointer;
 }
 

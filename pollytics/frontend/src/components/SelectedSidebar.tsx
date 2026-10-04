@@ -1,5 +1,5 @@
 import type { Pane } from "../types";
-import { DEFAULT_COLOR } from "../utils/colors";
+import { assignDefaultColorIfNeeded } from "../utils/colorUtils";
 
 import "./SelectedSidebar.css";
 
@@ -25,7 +25,7 @@ function getResultsDisplay(pane: Pane) {
                                 {/* A coloured indicator for the result in this row */}
                                 <span
                                     className="result-color"
-                                    style={{ backgroundColor: result.color ?? DEFAULT_COLOR }}
+                                    style={{ backgroundColor: assignDefaultColorIfNeeded(result.color) }}
                                 />
                                 {result.name}
                                 {result.party && (

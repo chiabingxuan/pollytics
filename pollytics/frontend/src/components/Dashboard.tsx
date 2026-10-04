@@ -10,7 +10,6 @@ import type { Pane } from "../types";
 import type { APIError } from "../utils/APIError";
 import { getGeoJson } from "../utils/geometryUtils";
 
-import "leaflet/dist/leaflet.css";
 import "./Dashboard.css";
 
 interface DashboardProps {
