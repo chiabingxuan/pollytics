@@ -1,0 +1,1 @@
+export const DEFAULT_COLOR: string = "#6B7280";

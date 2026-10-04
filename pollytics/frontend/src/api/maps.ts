@@ -1,4 +1,5 @@
 import type { FeatureCollection } from "geojson";
+
 import { API_URL } from "./params";
 import { APIError } from "../utils/APIError";
 

@@ -1,6 +1,7 @@
 import ElectionCard from "./ElectionCard";
 import Pagination from "./Pagination";
 import type { Election } from "../types";
+
 import "./ElectionPanel.css";
 
 interface ElectionPanelProps {

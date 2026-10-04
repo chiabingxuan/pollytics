@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
+
 import type { Election } from "../types";
+
 import "./ElectionCard.css";
 
 interface ElectionCardProps {

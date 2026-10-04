@@ -1,4 +1,5 @@
 import type { FeatureCollection, Geometry } from "geojson";
+
 import type { Pane } from "../types";
 
 // Get average longitude for the given polygon

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+
+import { fetchElection } from "../api/elections";
 import Dashboard from "../components/Dashboard";
 import ErrorMessage from "../components/ErrorMessage";
-import { fetchElection } from "../api/elections";
 import type { Election } from "../types";
 import type { APIError } from "../utils/APIError";
+
 import "./IndivElection.css";
 
 function IndivElection() {
