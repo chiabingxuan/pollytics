@@ -9,6 +9,32 @@ import type { APIError } from "../utils/APIError";
 
 import "./IndivElection.css";
 
+function getLoadedIndivElectionContent(election: Election) {
+    return <>
+        <h2>Election Dashboard</h2>
+
+        {/* Display basic details of the election */}
+        <section className="election-info">
+            <div>
+                <span>Year</span>
+                <span className="election-value">{election.year}</span>
+            </div>
+
+            <div>
+                <span>Country</span>
+                <span className="election-value">{election.country}</span>
+            </div>
+
+            <div>
+                <span>Type</span>
+                <span className="election-value">{election.type}</span>
+            </div>
+        </section>
+
+        <Dashboard electionId={election.id}/>
+    </>
+}
+
 function IndivElection() {
     // Since the election id is taken from the URL, it is a string
     const { electionId } = useParams<{ electionId: string }>();
@@ -34,39 +60,23 @@ function IndivElection() {
             });
     }, [electionId]);
 
-    // Display error message, if any
+
     if (errorMsg) {
         return <ErrorMessage msg={errorMsg}/>;
     }
 
-    // Election has not been loaded and there is no error
-    if (!election) {
-        return <p>Loading...</p>;
-    }
-
     return (
         <section>
-            <h2>Election Dashboard</h2>
-            
-            {/* Display basic details of the election */}
-            <section className="election-info">
-                <div>
-                    <span>Year</span>
-                    <span className="election-value">{election.year}</span>
-                </div>
+            {
+                // Display error message, if any
+                errorMsg
+                ? <ErrorMessage msg={errorMsg}/>
 
-                <div>
-                    <span>Country</span>
-                    <span className="election-value">{election.country}</span>
-                </div>
-
-                <div>
-                    <span>Type</span>
-                    <span className="election-value">{election.type}</span>
-                </div>
-            </section>
-
-            <Dashboard electionId={election.id}/>
+                // No error - check if election has not been loaded
+                : !election
+                    ? <p>Loading...</p>
+                    : getLoadedIndivElectionContent(election)
+            }
         </section>
     );
 }

@@ -1,7 +1,7 @@
 .election-info {
     display: flex;
     gap: 48px;
-    margin: 16px 0 24px;
+    margin: 16px 0 32px;
 }
 
 .election-info div {

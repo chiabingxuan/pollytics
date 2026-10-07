@@ -57,7 +57,7 @@ function getSelectedDivisionDisplay(selectedDivisionPane: Pane | null, onBack: (
 function getHoveredRegionDisplay(selectedDivisionPane: Pane | null, hoveredLocationPane: Pane | null) {
     if (!hoveredLocationPane) {
         return (
-            <p>Hover over a location to view its results.</p>
+            <h3>Hover over a location to view its results.</h3>
         );
     }
 

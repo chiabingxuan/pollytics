@@ -47,19 +47,19 @@ function Home() {
         handleFetchElections(null, 0);
     }, []);
 
-    if (errorMsg) {
-        return <ErrorMessage msg={errorMsg} />;
-    }
-
     return (
         <section>
-            <ElectionPanel
-                elections={elections}
-                pageIdx={pageIdx}
-                pageCursors={pageCursors}
-                hasMore={hasMoreElections}
-                onPageChange={goToPage}
-            />
+            {
+                errorMsg
+                    ? <ErrorMessage msg={errorMsg} />
+                    : <ElectionPanel
+                        elections={elections}
+                        pageIdx={pageIdx}
+                        pageCursors={pageCursors}
+                        hasMore={hasMoreElections}
+                        onPageChange={goToPage}
+                    />
+            }
         </section>
     );
 }

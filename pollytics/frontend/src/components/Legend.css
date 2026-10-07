@@ -1,13 +1,15 @@
 .legend {
     position: absolute;
-    top: 20px;
-    right: 20px;
+    top: 12px;
+    right: 12px;
     z-index: 1000;
 
     background: white;
-    padding: 12px;
+    padding: 8px;
     border-radius: 4px;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+
+    font-size: 13px;
 }
 
 .legend table {
@@ -16,17 +18,17 @@
 
 .legend th,
 .legend td {
-    padding: 4px 6px;
+    padding: 2px 4px;
     text-align: center;
 }
 
 .legend th:first-child {
     text-align: left;
-    padding-right: 12px;
+    padding-right: 8px;
 }
 
 .legend-color {
-    width: 20px;
-    height: 20px;
+    width: 14px;
+    height: 14px;
     border: 1px solid black;
 }

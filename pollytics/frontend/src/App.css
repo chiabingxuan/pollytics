@@ -1,5 +1,8 @@
-.app {
+.page-content {
+    width: 100%;
     max-width: 1400px;
+    min-height: 100vh;
     margin: 0 auto;
-    padding: 0px 24px;
+    padding: 12px 48px 48px;
+    box-sizing: border-box;
 }

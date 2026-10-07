@@ -1,20 +1,15 @@
-.nav {
-    border-bottom: 1px solid #e2e8f0;
-    background-color: white;
-}
-
 .nav ul {
     display: flex;
     gap: 24px;
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 12px 24px;
+    margin: 0;
+    padding: 12px 0;
     list-style: none;
 }
 
 .nav a {
     color: #64748b;
     font-size: 18px;
+    text-decoration: none;
 }
 
 .nav a:hover {
