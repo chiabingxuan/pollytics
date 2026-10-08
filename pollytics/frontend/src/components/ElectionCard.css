@@ -2,9 +2,9 @@
     display: grid;
     grid-template-columns: 1fr 2fr 1fr;
     align-items: center;
-    padding: 16px 20px;
+    padding: 1rem clamp(0.75rem, 2vw, 1.25rem);
     border: 1px solid #e2e8f0;
-    border-radius: 8px;
+    border-radius: 0.5rem;
     background-color: white;
     color: #1e293b;
 }
@@ -12,11 +12,11 @@
 .election-card > div {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0.25rem;
 }
 
 .election-card-label {
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: bold;
     color: #64748b;
     text-transform: uppercase;
@@ -27,3 +27,14 @@
     background-color: #f8fafc;
 }
 
+@media (max-width: 36rem) {
+    .election-card {
+        grid-template-columns: 1fr 1fr;
+        row-gap: 0.75rem;
+    }
+
+    .election-card > div:nth-child(2) {
+        grid-column: 1 / -1;
+        grid-row: 1;
+    }
+}

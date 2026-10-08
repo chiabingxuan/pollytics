@@ -1,8 +1,8 @@
 .header {
-    padding: 20px 0;
+    padding: 1.25rem clamp(1rem, 3.4vw, 3rem);
 }
 
 .header h1 {
     margin: 0;
-    font-size: 30px;
+    font-size: clamp(1.5rem, 3vw, 1.875rem);
 }
