@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field 
 from typing import Literal
 
+# Data models
 class Election(BaseModel):
     id: int = Field(description="The ID of the election", ge=1)
     name: str = Field(description="The name of the election")
@@ -27,15 +28,36 @@ class Region(BaseModel):
     type: Literal["COUNTY OR EQUIVALENT", "PARISH", "FEDERAL DISTRICT", "STATE HOUSE DISTRICT"] = Field(description="The type of region")
 
 
-class Results(BaseModel):
+class Result(BaseModel):
     name: str = Field(description="The name of the category that the votes belong to")
     color: str | None = Field(description="The colour associated with this category, to be filled on the dashboard maps", default=None)
     votes: int = Field(description="The number of votes for this category", ge=0)
 
 
-class ParticipationResults(Results):
+class ParticipationResult(Result):
     party: str | None = Field(description="The name of the party associated with this participation", default=None)
 
 
-class OtherResults(Results):
+class OtherResult(Result):
     name: Literal["OTHER", "SPOILED", "UNDERVOTES", "OVERVOTES"]
+
+
+# Models to return to the frontend
+class ElectionsResponse(BaseModel):
+    elections: list[Election]
+    has_more: bool
+
+
+class CollatedLocationResult(BaseModel):
+    participations: list[ParticipationResult]
+    other: list[OtherResult]
+
+
+class DivisionResult(BaseModel):
+    division: Division
+    results: CollatedLocationResult
+
+
+class RegionResult(BaseModel):
+    region: Region
+    results: CollatedLocationResult

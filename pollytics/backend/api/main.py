@@ -2,10 +2,10 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic_geojson import FeatureModel, FeatureCollectionModel
-from models import Division, Election, OtherResults, ParticipationResults, Region
+from models import Division, DivisionResult, Election, ElectionsResponse, OtherResult, ParticipationResult, Region, RegionResult
 import os
 from supabase import create_client, Client
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from whitelist import ALLOWED_ORIGINS
 
 load_dotenv()
@@ -64,11 +64,11 @@ async def does_race_exist(election_id, division_id):
     return bool(response.data)
 
 
-@app.get("/api/elections/")
+@app.get("/api/elections/", response_model=ElectionsResponse)
 async def get_elections(
     after: Annotated[int | None, Query(description="Only retrieve elections with an ID greater than this value", ge=1)] = None,
     limit: Annotated[int, Query(description="The maximum number of elections to return")] = 5,
-) -> dict[Literal["elections", "has_more"], list[Election] | bool]:    
+) -> Any:    
     query = supabase.table("elections") \
         .select("id, name, year, countries(name), type") \
         .order("id", desc=False) \
@@ -130,7 +130,7 @@ async def get_election(
 @app.get("/api/election_results/{election_id}")
 async def get_division_results(
     election_id: Annotated[int, Path(description="The election ID to retrieve division results from", ge=1)]
-) -> list[dict[Literal["division", "results"], Division | dict[Literal["participations", "other"], list[ParticipationResults | OtherResults]]]]:
+) -> list[DivisionResult]:
     election_json_retrieved = await get_election_response(election_id)
     if election_json_retrieved is None:
         raise HTTPException(
@@ -165,7 +165,7 @@ async def get_division_results(
             type=result["division_type"]
         )
 
-        formatted_result = ParticipationResults(
+        formatted_result = ParticipationResult(
             name=result["candidate_name"],
             party=result["party_name"],
             color=result["party_color"],
@@ -188,7 +188,7 @@ async def get_division_results(
             type=result["division_type"]
         )
 
-        formatted_result = OtherResults(
+        formatted_result = OtherResult(
             name=result["vote_type"],
             votes=result["votes"]
         )
@@ -220,7 +220,7 @@ async def get_division_results(
 async def get_region_results(
     election_id: Annotated[int, Path(description="The election ID to retrieve regional results from", ge=1)],
     division_id: Annotated[int, Path(description="The division ID to retrieve regional results from", ge=1)]
-) -> list[dict[Literal["region", "results"], Region | dict[Literal["participations", "other"], list[ParticipationResults | OtherResults]]]]:
+) -> list[RegionResult]:
     election_json_retrieved = await get_election_response(election_id)
     if election_json_retrieved is None:
         raise HTTPException(
@@ -273,7 +273,7 @@ async def get_region_results(
             type=result["region_type"]
         )
 
-        formatted_result = ParticipationResults(
+        formatted_result = ParticipationResult(
             name=result["candidate_name"],
             party=result["party_name"],
             color=result["party_color"],
@@ -296,7 +296,7 @@ async def get_region_results(
             type=result["region_type"]
         )
 
-        formatted_result = OtherResults(
+        formatted_result = OtherResult(
             name=result["vote_type"],
             votes=result["votes"]
         )
