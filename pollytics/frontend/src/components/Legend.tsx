@@ -1,6 +1,6 @@
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 import type { Pane } from "../types";
-import { assignDefaultColorIfNeeded, COLOR_INTERVALS, shiftColorToIntervalShade } from "../utils/colorUtils";
+import { COLOR_INTERVALS, DEFAULT_COLOR, shiftColorToIntervalShade } from "../utils/colorUtils";
 import type { ColorInterval } from "../utils/colorUtils";
 
 import "./Legend.css";
@@ -14,7 +14,7 @@ function getAllDistinctWinningColors(geoJson: FeatureCollection<Geometry, Pane>)
     const winningColors: string[] = geoJson.features.map(
         (feature: Feature<Geometry, Pane>) => feature.properties.winningColor
     )
-        .map(assignDefaultColorIfNeeded);
+        .map((winningColor: string | null) => winningColor ?? DEFAULT_COLOR);
 
     return [...new Set(winningColors)];
 }

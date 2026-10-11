@@ -1,0 +1,9 @@
+.banner {
+    width: 100%;
+    background-color: white;
+}
+
+.banner > header,
+.banner > nav {
+    border-bottom: 1px solid #e2e8f0;
+}

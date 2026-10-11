@@ -2,10 +2,10 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic_geojson import FeatureModel, FeatureCollectionModel
-from models import Division, Election, OtherResults, ParticipationResults, Region
+from models import Division, DivisionResult, Election, ElectionsResponse, ElectionType, OtherResult, ParticipationResult, Region, RegionResult, YearResult
 import os
 from supabase import create_client, Client
-from typing import Annotated, Literal
+from typing import Annotated, Any
 from whitelist import ALLOWED_ORIGINS
 
 load_dotenv()
@@ -27,9 +27,9 @@ supabase: Client = create_client(url, key)
 
 # Get a JSON representing the election details of the specified id
 # If id does not exist, return None
-async def get_election_response(election_id):
+def get_election_response(election_id):
     response = supabase.table("elections") \
-        .select("id, name, year, countries(name), type") \
+        .select("id, name, year, countries!inner(name), type") \
         .eq("id", election_id) \
         .execute()
 
@@ -45,7 +45,7 @@ async def get_election_response(election_id):
     return election_json
 
 
-async def does_division_exist(division_id):
+def does_division_exist(division_id):
     response = supabase.table("divisions") \
         .select("*") \
         .eq("id", division_id) \
@@ -54,7 +54,16 @@ async def does_division_exist(division_id):
     return bool(response.data)
 
 
-async def does_race_exist(election_id, division_id):
+def does_region_exist(region_id):
+    response = supabase.table("regions") \
+        .select("*") \
+        .eq("id", region_id) \
+        .execute()
+    
+    return bool(response.data)
+
+
+def does_race_exist(election_id, division_id):
     response = supabase.table("races") \
         .select("*") \
         .eq("election_id", election_id) \
@@ -64,11 +73,21 @@ async def does_race_exist(election_id, division_id):
     return bool(response.data)
 
 
-@app.get("/api/elections/")
+def do_elections_exist_for_election_country_and_type(election_country, election_type):
+    response = supabase.table("elections") \
+        .select("id", "countries!inner(name)") \
+        .eq("countries.name", election_country) \
+        .eq("type", election_type) \
+        .execute()
+
+    return bool(response.data)
+
+    
+@app.get("/api/elections/", response_model=ElectionsResponse)
 async def get_elections(
     after: Annotated[int | None, Query(description="Only retrieve elections with an ID greater than this value", ge=1)] = None,
     limit: Annotated[int, Query(description="The maximum number of elections to return")] = 5,
-) -> dict[Literal["elections", "has_more"], list[Election] | bool]:    
+) -> Any:    
     query = supabase.table("elections") \
         .select("id, name, year, countries(name), type") \
         .order("id", desc=False) \
@@ -108,7 +127,7 @@ async def get_elections(
 async def get_election(
     election_id: Annotated[int, Path(description="The election ID to retrieve details from", ge=1)]
 ) -> Election:
-    election_json_retrieved = await get_election_response(election_id)
+    election_json_retrieved = get_election_response(election_id)
     if election_json_retrieved is None:
         raise HTTPException(
             status_code=404,
@@ -128,10 +147,10 @@ async def get_election(
     
 
 @app.get("/api/election_results/{election_id}")
-async def get_division_results(
+async def get_division_results_for_election(
     election_id: Annotated[int, Path(description="The election ID to retrieve division results from", ge=1)]
-) -> list[dict[Literal["division", "results"], Division | dict[Literal["participations", "other"], list[ParticipationResults | OtherResults]]]]:
-    election_json_retrieved = await get_election_response(election_id)
+) -> list[DivisionResult]:
+    election_json_retrieved = get_election_response(election_id)
     if election_json_retrieved is None:
         raise HTTPException(
             status_code=404,
@@ -165,7 +184,7 @@ async def get_division_results(
             type=result["division_type"]
         )
 
-        formatted_result = ParticipationResults(
+        formatted_result = ParticipationResult(
             name=result["candidate_name"],
             party=result["party_name"],
             color=result["party_color"],
@@ -188,7 +207,7 @@ async def get_division_results(
             type=result["division_type"]
         )
 
-        formatted_result = OtherResults(
+        formatted_result = OtherResult(
             name=result["vote_type"],
             votes=result["votes"]
         )
@@ -216,12 +235,107 @@ async def get_division_results(
     return division_results_list
 
 
+@app.get("/api/historical_results/div_results/{division_id}")
+async def get_historical_results_for_division(
+    division_id: Annotated[int, Path(description="The division ID to retrieve historical results from", ge=1)],
+    country: Annotated[str, Query(description="The country in which the election cycle has been taking place")],
+    type: Annotated[ElectionType, Query(description="The type of election")]
+) -> list[YearResult]:
+    if not does_division_exist(division_id):
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "DIVISION_NOT_FOUND",
+                "message": "This division does not exist."
+            }
+        )
+
+    if not do_elections_exist_for_election_country_and_type(country, type):
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "ELECTION_NOT_FOUND",
+                "message": "There are no elections with the specified country and election type."
+            }
+        )
+
+    # For each year the election took place, get vote counts of each known participation
+    historical_participation_results_response = supabase.rpc(
+        "get_historical_participation_results_for_division",
+        {"p_division_id": division_id, "p_country_name": country, "p_election_type": type}
+    ).execute()
+
+    # For each year the election took place, get vote counts of other types
+    historical_other_results_response = supabase.rpc(
+        "get_historical_other_results_for_division",
+        {"p_division_id": division_id, "p_country_name": country, "p_election_type": type}
+    ).execute()
+
+    # Maps each year to a dictionary of "participations" -> list of participation results
+    # and "other" -> list of other results
+    year_results = {}
+
+    # Add in participation vote counts to mapping
+    for result in historical_participation_results_response.data:
+        year = result["year"]
+
+        formatted_result = ParticipationResult(
+            name=result["candidate_name"],
+            party=result["party_name"],
+            color=result["party_color"],
+            votes=result["votes"]
+        )
+
+        if year not in year_results:
+            year_results[year] = {
+                "participations": list(),
+                "other": list()
+            }
+
+        year_results[year]["participations"].append(formatted_result)
+
+    # Combine with other vote counts (wrt the same year)
+    for result in historical_other_results_response.data:
+        year = result["year"]
+
+        formatted_result = OtherResult(
+            name=result["vote_type"],
+            votes=result["votes"]
+        )
+
+        if year not in year_results:
+            year_results[year] = {
+                "participations": list(),
+                "other": list()
+            }
+
+        year_results[year]["other"].append(formatted_result)
+
+    year_results_list = [
+        {
+            "year": year,
+            "results": results
+        } for year, results in year_results.items()
+    ]
+
+    if not year_results_list:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "DIVISION_HISTORICAL_DATA_NOT_FOUND",
+                "message": "No historical data found for this division and the election cycle specified."
+            }
+        )
+
+    return year_results_list
+
+
 @app.get("/api/election_results/{election_id}/div_results/{division_id}")
-async def get_region_results(
+async def get_region_results_for_election(
     election_id: Annotated[int, Path(description="The election ID to retrieve regional results from", ge=1)],
     division_id: Annotated[int, Path(description="The division ID to retrieve regional results from", ge=1)]
-) -> list[dict[Literal["region", "results"], Region | dict[Literal["participations", "other"], list[ParticipationResults | OtherResults]]]]:
-    election_json_retrieved = await get_election_response(election_id)
+) -> list[RegionResult]:
+    election_json_retrieved = get_election_response(election_id)
     if election_json_retrieved is None:
         raise HTTPException(
             status_code=404,
@@ -231,7 +345,7 @@ async def get_region_results(
             }
         )
     
-    if not await does_division_exist(division_id):
+    if not does_division_exist(division_id):
         raise HTTPException(
             status_code=404,
             detail={
@@ -240,7 +354,7 @@ async def get_region_results(
             }
         )
 
-    if not await does_race_exist(election_id, division_id):
+    if not does_race_exist(election_id, division_id):
         raise HTTPException(
             status_code=404,
             detail={
@@ -273,7 +387,7 @@ async def get_region_results(
             type=result["region_type"]
         )
 
-        formatted_result = ParticipationResults(
+        formatted_result = ParticipationResult(
             name=result["candidate_name"],
             party=result["party_name"],
             color=result["party_color"],
@@ -296,7 +410,7 @@ async def get_region_results(
             type=result["region_type"]
         )
 
-        formatted_result = OtherResults(
+        formatted_result = OtherResult(
             name=result["vote_type"],
             votes=result["votes"]
         )
@@ -331,11 +445,106 @@ async def get_region_results(
     return region_results_list
 
 
+@app.get("/api/historical_results/region_results/{region_id}")
+async def get_historical_results_for_region(
+    region_id: Annotated[int, Path(description="The region ID to retrieve historical results from")],
+    country: Annotated[str, Query(description="The country in which the election cycle has been taking place")],
+    type: Annotated[ElectionType, Query(description="The type of election")]
+) -> list[YearResult]:
+    if not does_region_exist(region_id):
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "REGION_NOT_FOUND",
+                "message": "This region does not exist."
+            }
+        )
+
+    if not do_elections_exist_for_election_country_and_type(country, type):
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "ELECTION_NOT_FOUND",
+                "message": "There are no elections with the specified country and election type."
+            }
+        )
+
+    # For each year the election took place, get vote counts of each known participation
+    historical_participation_results_response = supabase.rpc(
+        "get_historical_participation_results_for_region",
+        {"p_region_id": region_id, "p_country_name": country, "p_election_type": type}
+    ).execute()
+
+    # For each year the election took place, get vote counts of other types
+    historical_other_results_response = supabase.rpc(
+        "get_historical_other_results_for_region",
+        {"p_region_id": region_id, "p_country_name": country, "p_election_type": type}
+    ).execute()
+
+    # Maps each year to a dictionary of "participations" -> list of participation results
+    # and "other" -> list of other results
+    year_results = {}
+
+    # Add in participation vote counts to mapping
+    for result in historical_participation_results_response.data:
+        year = result["year"]
+
+        formatted_result = ParticipationResult(
+            name=result["candidate_name"],
+            party=result["party_name"],
+            color=result["party_color"],
+            votes=result["votes"]
+        )
+
+        if year not in year_results:
+            year_results[year] = {
+                "participations": list(),
+                "other": list()
+            }
+
+        year_results[year]["participations"].append(formatted_result)
+
+    # Combine with other vote counts (wrt the same year)
+    for result in historical_other_results_response.data:
+        year = result["year"]
+
+        formatted_result = OtherResult(
+            name=result["vote_type"],
+            votes=result["votes"]
+        )
+
+        if year not in year_results:
+            year_results[year] = {
+                "participations": list(),
+                "other": list()
+            }
+
+        year_results[year]["other"].append(formatted_result)
+
+    year_results_list = [
+        {
+            "year": year,
+            "results": results
+        } for year, results in year_results.items()
+    ]
+
+    if not year_results_list:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "REGION_HISTORICAL_DATA_NOT_FOUND",
+                "message": "No historical data found for this region and the election cycle specified."
+            }
+        )
+
+    return year_results_list
+
+
 @app.get("/api/election_maps/{election_id}")
 async def get_division_maps(
     election_id: Annotated[int, Path(description="The election ID to retrieve division maps from", ge=1)]
 ) -> FeatureCollectionModel:
-    election_json_retrieved = await get_election_response(election_id)
+    election_json_retrieved = get_election_response(election_id)
     if election_json_retrieved is None:
         raise HTTPException(
             status_code=404,
@@ -378,7 +587,7 @@ async def get_region_maps(
     division_id: Annotated[int, Path(description="The division ID to retrieve regional maps from", ge=1)]
 ) -> FeatureCollectionModel:
     # Check if election id exists in the database
-    election_json_retrieved = await get_election_response(election_id)
+    election_json_retrieved = get_election_response(election_id)
     if election_json_retrieved is None:
         raise HTTPException(
             status_code=404,
@@ -388,7 +597,7 @@ async def get_region_maps(
             }
         )
 
-    if not await does_division_exist(division_id):
+    if not does_division_exist(division_id):
         raise HTTPException(
             status_code=404,
             detail={
@@ -397,7 +606,7 @@ async def get_region_maps(
             }
         )
 
-    if not await does_race_exist(election_id, division_id):
+    if not does_race_exist(election_id, division_id):
         raise HTTPException(
             status_code=404,
             detail={

@@ -1,5 +1,8 @@
-.app {
-    max-width: 1400px;
+.page-content {
+    width: 100%;
+    max-width: 87.5rem;
+    min-height: 100vh;
     margin: 0 auto;
-    padding: 0px 24px;
+    padding: 0.75rem clamp(2rem, 7vw, 6rem) 3rem;
+    box-sizing: border-box;
 }

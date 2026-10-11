@@ -9,3 +9,11 @@
     width: 100%;
     height: 100%;
 }
+
+@media (max-width: 48rem) {
+    .electoral-map {
+        flex: none;
+        width: 100%;
+        height: clamp(20rem, 55svh, 32rem);
+    }
+}

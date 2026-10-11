@@ -5,7 +5,7 @@ const LINKEDIN_URL: string = "https://www.linkedin.com/in/bing-xuan-chia/";
 
 function About() {
     return (
-        <section>
+        <section className="about">
             <h2>About the Site</h2>
             <p>
                 <i>pollytics</i> is a platform which gives users the freedom to explore election results from countries all around the world. By delving into election data through interactive maps and a helpful assistant, users are able to learn more about key voting trends, thereby gaining a better understanding of a country's political climate.

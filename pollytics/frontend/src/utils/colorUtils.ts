@@ -6,7 +6,9 @@ export type ColorInterval = {
     max: number;
 };
 
-const DEFAULT_COLOR: string = "#6B7280";
+export const DEFAULT_COLOR: string = "#6B7280";
+export const INDEPENDENT_COLOR: string = "#7C3AED";
+
 export const COLOR_INTERVALS: ColorInterval[] = [
     { index: 0, min: 0, max: 0.50 },
     { index: 1, min: 0.50, max: 0.60 },
@@ -15,10 +17,6 @@ export const COLOR_INTERVALS: ColorInterval[] = [
     { index: 4, min: 0.80, max: 0.90 },
     { index: 5, min: 0.90, max: 1.00 },
 ];
-
-export function assignDefaultColorIfNeeded(color: string | null) {
-    return color ?? DEFAULT_COLOR;
-}
 
 function getLightShadeOfBaseColor(baseColor: string): string {
     const WHITE_COLOR = "#FFFFFF";

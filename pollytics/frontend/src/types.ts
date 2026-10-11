@@ -13,20 +13,30 @@ export interface ElectionsResponse {
 }
 
 // Location types
+const Level = {
+    COMPLETE: 0, // for the complete view of the electoral map
+    DIVISION: 1,
+    REGION: 2,
+} as const;
+
+type Level = (typeof Level)[keyof typeof Level];
+
+export { Level }
+
 export interface Location {
     id: number;
     name: string;
-    level: "DIVISION" | "REGION";
+    level: Level;
     type: string;
 }
 
 export interface Division extends Location {
-    level: "DIVISION";
+    level: typeof Level.DIVISION;
     type: "COUNTRY" | "STATE" | "CONGRESSIONAL DISTRICT" | "FEDERAL DISTRICT" | "CONSTITUENCY";
 }
 
 export interface Region extends Location {
-    level: "REGION";
+    level: typeof Level.REGION;
     type: "COUNTY OR EQUIVALENT" | "PARISH" | "FEDERAL DISTRICT" | "STATE HOUSE DISTRICT";
 }
 
@@ -41,29 +51,25 @@ export interface ParticipationResult extends Result {
     party: string | null;
 }
 
+export interface CollatedResult {
+    participations: ParticipationResult[];
+    other: Result[];
+}
+
 export interface DivisionResultResponse {
     division: Division;
-    results: {
-        participations: ParticipationResult[];
-        other: Result[];
-    };
+    results: CollatedResult;
 }
 
 export interface RegionResultResponse {
     region: Region;
-    results: {
-        participations: ParticipationResult[];
-        other: Result[];
-    };
+    results: CollatedResult;
 }
 
 // Result types to pass into the frontend components
 export interface LocationResult {
     location: Location;
-    results: {
-        participations: ParticipationResult[];
-        other: Result[];
-    };
+    results: CollatedResult;
 }
 
 export interface DivisionResult extends LocationResult {
@@ -74,18 +80,33 @@ export interface RegionResult extends LocationResult {
     location: Region;
 }
 
-// Result types after frontend processing
-export interface PaneResult extends Result {
+export interface YearResult {
+    year: number;
+    results: CollatedResult;
+}
+
+// Result types used during and after frontend processing
+export interface FormattedResult extends Result {
     party: string | null;
     proportion: number; // vote share as a value from 0 to 1
+}
+
+export interface FormattedHistoricalRecord {
+    year: number;
+    partyNamesToProportions: Record<string, number>;
+}
+
+export interface FormattedHistoricalData {
+    data: FormattedHistoricalRecord[];
+    distinctPartiesInvolved: { name: string; color: string }[];
 }
 
 export interface Pane {
     id: number;
     name: string;
-    level: "DIVISION" | "REGION";
+    level: Level;
     type: string;
     winningColor: string | null;
     winningProportion: number;
-    results: PaneResult[];
+    results: FormattedResult[];
 }

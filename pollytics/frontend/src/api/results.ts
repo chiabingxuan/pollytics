@@ -1,5 +1,6 @@
 import { API_URL } from "./params";
-import type { Division, DivisionResult, DivisionResultResponse, Region, RegionResult, RegionResultResponse } from "../types";
+
+import { Level, type Division, type DivisionResult, type DivisionResultResponse, type Region, type RegionResult, type RegionResultResponse, type YearResult } from "../types";
 import { APIError } from "../utils/APIError";
 
 export async function fetchDivisionResults(electionId: number): Promise<DivisionResult[]> {
@@ -25,7 +26,7 @@ export async function fetchDivisionResults(electionId: number): Promise<Division
     return resultsJson.map((result) => {
         const location: Division = {
             ...result.division,
-            level: "DIVISION" // add a label so that we can distinguish between divisions / regions later
+            level: Level.DIVISION // add a label so that we can distinguish between divisions / regions later
         };
 
         return {
@@ -34,6 +35,36 @@ export async function fetchDivisionResults(electionId: number): Promise<Division
             results: result.results
         };
     });
+}
+
+export async function fetchHistoricalResultsForDivision(
+    divisionId: number,
+    electionCountry: string,
+    electionType: string
+): Promise<YearResult[]> {
+    const params = new URLSearchParams({
+        country: electionCountry,
+        type: electionType
+    });
+
+    const response = await fetch(`${API_URL}/historical_results/div_results/${divisionId}?${params}`);
+
+    if (!response.ok) {
+        const error = await response.json();
+
+        switch (response.status) {
+            case 404:
+                throw new APIError(error.detail.code, error.detail.message);
+
+            case 422:
+                throw new APIError("INVALID_INPUTS", "Either the division ID, election country or election type provided is invalid.");
+
+            default:
+                throw new APIError("DEFAULT_FETCH_ERROR", "Failed to fetch historical election results for this division.");
+        }
+    }
+
+    return await response.json();
 }
 
 export async function fetchRegionResults(electionId: number, divisionId: number): Promise<RegionResult[]> {
@@ -59,7 +90,7 @@ export async function fetchRegionResults(electionId: number, divisionId: number)
     return resultsJson.map((result) => {
         const location: Region = {
             ...result.region,
-            level: "REGION" // add a label so that we can distinguish between divisions / regions later
+            level: Level.REGION // add a label so that we can distinguish between divisions / regions later
         };
 
         return {
@@ -70,3 +101,32 @@ export async function fetchRegionResults(electionId: number, divisionId: number)
     });
 }
 
+export async function fetchHistoricalResultsForRegion(
+    regionId: number,
+    electionCountry: string,
+    electionType: string
+): Promise<YearResult[]> {
+    const params = new URLSearchParams({
+        country: electionCountry,
+        type: electionType
+    });
+
+    const response = await fetch(`${API_URL}/historical_results/region_results/${regionId}?${params}`);
+
+    if (!response.ok) {
+        const error = await response.json();
+
+        switch (response.status) {
+            case 404:
+                throw new APIError(error.detail.code, error.detail.message);
+
+            case 422:
+                throw new APIError("INVALID_INPUTS", "Either the region ID, election country or election type provided is invalid.");
+
+            default:
+                throw new APIError("DEFAULT_FETCH_ERROR", "Failed to fetch historical election results for this region.");
+        }
+    }
+
+    return await response.json();
+}
