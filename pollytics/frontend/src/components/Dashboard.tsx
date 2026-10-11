@@ -1,46 +1,49 @@
-import { useEffect, useRef, useState } from "react";
-import type { FeatureCollection, Geometry } from "geojson";
+import { useEffect, useState } from "react";
+import type { Feature, FeatureCollection, Geometry } from "geojson";
 
 import ElectoralMap from "./ElectoralMap";
 import ErrorMessage from "./ErrorMessage";
+import Gallery from "./Gallery";
 import SelectedSidebar from "./SelectedSidebar";
 import { fetchDivisionMaps, fetchRegionMaps } from "../api/maps";
-import { fetchDivisionResults, fetchRegionResults } from "../api/results";
-import type { Pane } from "../types";
+import { fetchDivisionResults, fetchHistoricalResultsForDivision, fetchHistoricalResultsForRegion, fetchRegionResults } from "../api/results";
+import { Level, type FormattedHistoricalData, type Pane } from "../types";
 import type { APIError } from "../utils/APIError";
-import { getGeoJson } from "../utils/geometryUtils";
+import { getFormattedGeoJson, getFormattedGeoJsonFromFeature } from "../utils/geometryUtils";
+import { getFormattedHistoricalData } from "../utils/voteUtils";
 
 import "./Dashboard.css";
 
 interface DashboardProps {
     electionId: number;
+    electionCountry: string;
+    electionType: string;
 }
 
-function Dashboard({ electionId }: DashboardProps) {
+function Dashboard({ electionId, electionCountry, electionType }: DashboardProps) {
     // GeoJSON across all divisions
-    const [divisionGeoJson, setDivisionGeoJson] = useState<FeatureCollection<Geometry, Pane> | null>(null);
+    const [completeGeoJson, setCompleteGeoJson] = useState<FeatureCollection<Geometry, Pane> | null>(null);
 
-    // GeoJSON across all regions in the selected division. If no selected division, this is null
-    const [regionGeoJson, setRegionGeoJson] = useState<FeatureCollection<Geometry, Pane> | null>(null);
+    // GeoJSONs for selected divisions / regions, if any
+    const [selectedDivisionGeoJson, setSelectedDivisionGeoJson] = useState<FeatureCollection<Geometry, Pane> | null>(null);
+    const [selectedRegionGeoJson, setSelectedRegionGeoJson] = useState<FeatureCollection<Geometry, Pane> | null>(null);
 
-    // A division can be selected by clicking
+    // Historical data for selected divisions / regions, if any
+    const [selectedDivisionHistoricalData, setSelectedDivisionHistoricalData] = useState<FormattedHistoricalData | null>(null);
+    const [selectedRegionHistoricalData, setSelectedRegionHistoricalData] = useState<FormattedHistoricalData | null>(null);
+
+    // Divisions and regions can be selected by clicking
     const [selectedDivisionPane, setSelectedDivisionPane] = useState<Pane | null>(null);
+    const [selectedRegionPane, setSelectedRegionPane] = useState<Pane | null>(null);
 
-    // Any location (division or region, depending on what is being displayed) can be hover over
+    // Any location (division or region, depending on what is being displayed) can be hovered over
     const [hoveredLocationPane, setHoveredLocationPane] = useState<Pane | null>(null);
-
-    // If a user clicks a division with no regional data, we need to show a pop-up notifying them
-    const [showNoRegionPopup, setShowNoRegionPopup] = useState(false);
-    const noRegionPopupRef = useRef<HTMLDialogElement>(null);  // Initial reference to popup is null
 
     const [isLoading, setIsLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-    // If no division selected, display all divisions.
-    // Otherwise, display the regions of the selected division
-    const displayedGeoJson = selectedDivisionPane
-        ? regionGeoJson
-        : divisionGeoJson;
+    // Note that complete view > division view > regional view
+    const displayedGeoJson = selectedRegionGeoJson ?? (selectedDivisionGeoJson ?? completeGeoJson);
 
     // For the first time, get division results and maps
     useEffect(() => {
@@ -51,8 +54,8 @@ function Dashboard({ electionId }: DashboardProps) {
             fetchDivisionMaps(electionId),
         ])
             .then(([divisionResults, divisionMaps]) => {
-                const formattedGeoJson = getGeoJson(divisionResults, divisionMaps);
-                setDivisionGeoJson(formattedGeoJson);
+                const formattedGeoJson = getFormattedGeoJson(divisionResults, divisionMaps);
+                setCompleteGeoJson(formattedGeoJson);
             })
             .catch((error: APIError) => {
                 setErrorMsg(error.message);
@@ -62,17 +65,8 @@ function Dashboard({ electionId }: DashboardProps) {
             });
     }, [electionId]);
 
-    // If popup boolean flag changes, open or close the popup accordingly
-    useEffect(() => {
-        if (showNoRegionPopup) {
-            noRegionPopupRef.current?.showModal();
-        } else {
-            noRegionPopupRef.current?.close();
-        }
-    }, [showNoRegionPopup]);
-
     if (errorMsg) {
-        return (<ErrorMessage msg={errorMsg}/>);
+        return <ErrorMessage msg={errorMsg}/>;
     }
 
     if (isLoading) {
@@ -82,81 +76,182 @@ function Dashboard({ electionId }: DashboardProps) {
     // If loading has completed, the GeoJSON to display should not still be null. 
     // If this happens, we are screwed so throw an error
     if (!displayedGeoJson) {
-        throw new Error("Dashboard has loaded, but the GeoJSON to display is still null");
+        throw new Error("Dashboard has loaded, but the GeoJSON to display is still null.");
     }
 
-    // Processes a pane marked as selected from ElectoralMap
-    const handleSelectedPane = (pane: Pane) => {
-        const DIVISION_LEVEL: string = "DIVISION";
+    // If there is no selected division, then there should not be a selected region
+    if (!selectedDivisionPane && selectedRegionPane) {
+        throw new Error("There is a selected region but no selected division.");
+    }
+
+    // Processes a feature marked as selected from ElectoralMap
+    const handleSelectedFeature = (feature: Feature<Geometry, Pane>) => {
         const REGION_DATA_NOT_FOUND_ERROR_CODE: string = "REGION_DATA_NOT_FOUND";
-        
-        // If the pane is a division, show the regional panes for that division
-        // Otherwise, nothing happens
-        if (pane.level != DIVISION_LEVEL) {
-            return;
-        }
 
-        setHoveredLocationPane(null);
-        setIsLoading(true);
+        const pane: Pane = feature.properties;
 
-        const divisionId = pane.id;
+        // Check what kind of pane this is (division or region)
+        switch (pane.level) {
+            case Level.DIVISION:
+                if (selectedDivisionPane) {
+                    // A selected division already exists.
+                    // This must mean that the map had only been showing a single pane (representing the 
+                    // existing selected division), and the user clicked on it again
 
-        Promise.all([
-            fetchRegionResults(electionId, divisionId),
-            fetchRegionMaps(electionId, divisionId),
-        ])
-            .then(([regionResults, regionMaps]) => {
-                const formattedGeoJson = getGeoJson(regionResults, regionMaps);
-                setRegionGeoJson(formattedGeoJson);
-                setSelectedDivisionPane(pane);
-            })
-            .catch((error: APIError) => {
-                // If no regional data found for the selected division,
-                // show a popup
-                if (error.code === REGION_DATA_NOT_FOUND_ERROR_CODE) {
-                    setShowNoRegionPopup(true);
+                    // The existing selected division must be the same as the new division being selected
+                    if ((selectedDivisionPane.id !== pane.id) || (selectedDivisionPane.level !== pane.level)) {
+                        throw new Error("New division being selected is different from the existing selected division");
+                    }
+
+                    // For this case, nothing should happen
+                    return;
+                }
+                
+                setHoveredLocationPane(null);
+                setIsLoading(true);
+                
+                const divisionId = pane.id;
+
+                // Promise to get regional results and maps for this division
+                const selectedDivisionGeoJsonPromise = Promise.all([
+                    fetchRegionResults(electionId, divisionId),
+                    fetchRegionMaps(electionId, divisionId),
+                ])
+                    .then(([regionResults, regionMaps]) =>
+                        getFormattedGeoJson(regionResults, regionMaps)
+                    )
+                    .catch((error: APIError) => {
+                        if (error.code === REGION_DATA_NOT_FOUND_ERROR_CODE) {
+                            // If no regional data found for the selected feature,
+                            // the new GeoJSON will only contain the selected feature itself
+                            return getFormattedGeoJsonFromFeature(feature);
+                        }
+
+                        throw error;
+                    });
+
+                // Get regional results + maps for this division, as well as
+                // get historical results for this division, in parallel
+                Promise.all([
+                    selectedDivisionGeoJsonPromise,
+                    fetchHistoricalResultsForDivision(
+                        divisionId,
+                        electionCountry,
+                        electionType
+                    ),
+                ])
+                    .then(([formattedSelectedDivisionGeoJson, fetchedSelectedDivisionHistoricalResults]) => {
+                        setSelectedDivisionGeoJson(formattedSelectedDivisionGeoJson);
+                        setSelectedDivisionPane(pane);
+                        setSelectedDivisionHistoricalData(
+                            getFormattedHistoricalData(fetchedSelectedDivisionHistoricalResults)
+                        );
+                    })
+                    .catch((error: APIError) => {
+                        setErrorMsg(error.message);
+                    })
+                    .finally(() => {
+                        setIsLoading(false);
+                    });
+
+                break;
+
+            case Level.REGION:
+                if (selectedRegionPane) {
+                    // A selected region already exists.
+                    // This must mean that the map had only been showing a single pane (representing the 
+                    // existing selected region), and the user clicked on it again
+
+                    // The existing selected region must be the same as the new region being selected
+                    if ((selectedRegionPane.id !== pane.id) || (selectedRegionPane.level !== pane.level)) {
+                        throw new Error("New region being selected is different from the existing selected region");
+                    }
+
+                    // For this case, nothing should happen
                     return;
                 }
 
-                setErrorMsg(error.message);
-            })
-            .finally(() => {
-                setIsLoading(false);
-            });
+                setHoveredLocationPane(null);
+                
+                const regionId = pane.id;
+
+                // New GeoJSON will only contain the selected feature
+                const formattedSelectedRegionGeoJson = getFormattedGeoJsonFromFeature(feature);
+
+                // Get historical results for this region
+                fetchHistoricalResultsForRegion(regionId, electionCountry, electionType)
+                    .then((fetchedSelectedRegionHistoricalResults) => {
+                        setSelectedRegionGeoJson(formattedSelectedRegionGeoJson);
+                        setSelectedRegionPane(pane);
+                        setSelectedRegionHistoricalData(
+                            getFormattedHistoricalData(fetchedSelectedRegionHistoricalResults)
+                        );
+                    })
+                    .catch((error: APIError) => {
+                        setErrorMsg(error.message);
+                    })
+
+                break;
+
+            default:
+                throw new Error("Unknown pane level detected.");
+        }
     };
     
-    return (
-        <div className="dashboard">
-            <SelectedSidebar
-                selectedDivisionPane={selectedDivisionPane}
-                hoveredLocationPane={hoveredLocationPane}
-                onBack={() => {
-                    // Sidebar has a callback. If a division has been selected,
-                    // the callback allows the user to back out and view
-                    // all the divisions again
-                    setRegionGeoJson(null);
-                    setSelectedDivisionPane(null);
-                }}
-            />
-            {/* Use a key to force GeoJSON layer in ElectoralMap to be recreated when switching between
-            divisions and regions. This ensures Leaflet correctly renders all division panes when
-            returning from a selected division */}
-            <ElectoralMap
-                geoJson={displayedGeoJson}
-                geoJsonKey={selectedDivisionPane ? "regions" : "divisions"}
-                updateHoveredLocationOnHoverPane={setHoveredLocationPane}
-                updateHoveredLocationOnLeavePane={() => setHoveredLocationPane(null)}
-                handleSelectedPane={handleSelectedPane}
-            />
+    return <>
+        <section>
+            <ul>
+                <li>
+                    Hover over an unselected location to preview its election results in the sidebar.
+                </li>
+                <li>
+                    Click a location to select it, keep its election results displayed in the sidebar,
+                    and show additional details below the map.
+                </li>
+            </ul>
+            
+            <div className="dashboard">
+                <SelectedSidebar
+                    selectedDivisionPane={selectedDivisionPane}
+                    selectedRegionPane={selectedRegionPane}
+                    hoveredLocationPane={hoveredLocationPane}
 
-            <dialog ref={noRegionPopupRef} className="no-region-popup">
-                <p>No regional results are available for this location.</p>
-                <button onClick={() => setShowNoRegionPopup(false)}>
-                    OK
-                </button>
-            </dialog>
-        </div>
-    );
+                    // Sidebar has callbacks. The callbacks allow the user to do the following,
+                    // depending on the current view they are in:
+                    // - Back out from regional view and re-enter the division view
+                    // - Back out from division view and re-enter the complete view
+                    exitDivisionView={() => {
+                        setSelectedDivisionGeoJson(null);
+                        setSelectedDivisionPane(null);
+                        setSelectedDivisionHistoricalData(null);
+                    }}
+                    exitRegionView={() => {
+                        setSelectedRegionGeoJson(null);
+                        setSelectedRegionPane(null);
+                        setSelectedRegionHistoricalData(null);
+                    }}
+                />
+
+                <ElectoralMap
+                    geoJson={displayedGeoJson}
+                    currentView={
+                        selectedRegionPane ? Level.REGION
+                            : selectedDivisionPane ? Level.DIVISION
+                            : Level.COMPLETE
+                    }
+                    updateHoveredLocationPaneOnHover={setHoveredLocationPane}
+                    updateHoveredLocationPaneOnLeave={() => setHoveredLocationPane(null)}
+                    handleSelectedFeature={handleSelectedFeature}
+                />
+            </div>
+        </section>
+        <Gallery
+            selectedDivisionPane={selectedDivisionPane}
+            selectedRegionPane={selectedRegionPane}
+            selectedDivisionHistoricalData={selectedDivisionHistoricalData}
+            selectedRegionHistoricalData={selectedRegionHistoricalData}
+        />
+    </>;
 }
 
 export default Dashboard;

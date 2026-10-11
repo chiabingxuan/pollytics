@@ -5,27 +5,32 @@ import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 
 import Legend from "./Legend";
-import type { Pane } from "../types";
-import { assignDefaultColorIfNeeded, getColorFromWinningProportion } from "../utils/colorUtils";
+import type { Level, Pane } from "../types";
+import { DEFAULT_COLOR, getColorFromWinningProportion } from "../utils/colorUtils";
 
 import "./ElectoralMap.css";
 
 interface ElectoralMapProps {
     geoJson: FeatureCollection<Geometry, Pane>;
-    geoJsonKey: string;
-    updateHoveredLocationOnHoverPane: (pane: Pane) => void;
-    updateHoveredLocationOnLeavePane: () => void;
-    handleSelectedPane: (pane: Pane) => void;
+    currentView: Level;
+    updateHoveredLocationPaneOnHover: (pane: Pane) => void;
+    updateHoveredLocationPaneOnLeave: () => void;
+    handleSelectedFeature: (feature: Feature<Geometry, Pane>) => void;
 }
 
-export function getPaneStyle(feature: Feature<Geometry, Pane> | undefined) {
+interface FitMapToGeoJsonProps {
+    geoJson: FeatureCollection<Geometry, Pane>;
+    zoom: number;
+}
+
+export function getFeatureStyle(feature: Feature<Geometry, Pane> | undefined) {
     // Required by React Leaflet's StyleFunction type
     if (!feature) {
         return {};
     }
 
-    // Give default colour if the category doesn't have an associated colour
-    const baseColor: string = assignDefaultColorIfNeeded(feature.properties.winningColor);
+    // Give default colour if the category doesn't have an associated colour (ie. an exceptional voting category)
+    const baseColor: string = feature.properties.winningColor ?? DEFAULT_COLOR;
 
     return ({
         fillColor: getColorFromWinningProportion(
@@ -41,13 +46,13 @@ export function getPaneStyle(feature: Feature<Geometry, Pane> | undefined) {
 
 // Get bounds of the GeoJSON and use it shift the map view, enabling all the panes to be captured.
 // This means we do not need to hard code the centre of the map
-function FitMapToGeoJson({ geoJson }: { geoJson: FeatureCollection<Geometry, Pane> }) {
+function FitMapToGeoJson({ geoJson, zoom }: FitMapToGeoJsonProps) {
     const map = useMap();
 
     useEffect(() => {
         const layer = L.geoJSON(geoJson);
         if (layer.getBounds().isValid()) {
-            map.fitBounds(layer.getBounds(), { maxZoom: 6 });
+            map.fitBounds(layer.getBounds(), { maxZoom: zoom });
         }
     }, [geoJson, map]);
 
@@ -56,21 +61,23 @@ function FitMapToGeoJson({ geoJson }: { geoJson: FeatureCollection<Geometry, Pan
 
 function ElectoralMap({
     geoJson,
-    geoJsonKey,
-    updateHoveredLocationOnHoverPane,
-    updateHoveredLocationOnLeavePane,
-    handleSelectedPane 
+    currentView,
+    updateHoveredLocationPaneOnHover,
+    updateHoveredLocationPaneOnLeave,
+    handleSelectedFeature
 }: ElectoralMapProps) {
     const MAP_ATTRIBUTION: string = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
     const MAP_URL ="https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+    const ZOOM: number = 6;
 
-    // When mouse hovers above a pane, we highlight the pane
-    const onHoverPane = (e: LeafletMouseEvent) => {
+    // When mouse hovers above a feature, we highlight the corresponding pane
+    const onHoverFeature = (e: LeafletMouseEvent) => {
         const layer = e.target as Path & {
             feature: Feature<Geometry, Pane>;
         };
-
-        updateHoveredLocationOnHoverPane(layer.feature.properties);
+        const pane: Pane = layer.feature.properties;
+        
+        updateHoveredLocationPaneOnHover(pane);
 
         layer.setStyle({
             weight: 3,
@@ -78,56 +85,61 @@ function ElectoralMap({
         });
     };
 
-    // When mouse no longers hovers above pane, do not highlight it anymore
-    const onLeavePane = (e: LeafletMouseEvent) => {
+    // When mouse no longers hovers above feature, do not highlight the corresponding pane anymore
+    const onLeaveFeature = (e: LeafletMouseEvent) => {
         const layer = e.target as Path & {
             feature: Feature<Geometry, Pane>;
         };
+        const feature: Feature<Geometry, Pane> = layer.feature;
 
-        updateHoveredLocationOnLeavePane();
+        updateHoveredLocationPaneOnLeave();
 
-        layer.setStyle(getPaneStyle(layer.feature));
+        layer.setStyle(getFeatureStyle(feature));
     };
 
-    // If a pane is clicked
+    // If a feature is clicked
     // If the pane is a division, show the regional panes for that division
     // Otherwise, nothing happens
-    const onClickPane = (e: LeafletMouseEvent) => {
+    const onClickFeature = (e: LeafletMouseEvent) => {
         const layer = e.target as Path & {
             feature: Feature<Geometry, Pane>;
         };
-        const pane = layer.feature.properties;
+        const feature: Feature<Geometry, Pane> = layer.feature;
 
-        handleSelectedPane(pane);
+        handleSelectedFeature(feature);
     };
 
-    // Handles mouse actions on the panes
-    const onEachPane = (_feature: Feature<Geometry, Pane>, layer: Path) => {
+    // Handles mouse actions on the features
+    const onEachFeature = (_feature: Feature<Geometry, Pane>, layer: Path) => {
         layer.on({
-            mouseover: onHoverPane,
-            mouseout: onLeavePane,
-            click: onClickPane
+            mouseover: onHoverFeature,
+            mouseout: onLeaveFeature,
+            click: onClickFeature
         });
     };
 
     return <div className="electoral-map">
         <MapContainer 
             center={[0, 0]} // Placeholder coordinates
-            zoom={6}
+            zoom={ZOOM}
             scrollWheelZoom={true}
         >
             <TileLayer attribution={MAP_ATTRIBUTION} url={MAP_URL} />
+
+            {/* Use a key to force GeoJSON layer to be recreated when switching between
+            complete view, division view and regional view. This ensures Leaflet correctly renders all division panes when
+            returning from a selected division */}
             <GeoJSON
-                key={geoJsonKey}
+                key={currentView}
                 data={geoJson}
-                style={getPaneStyle}
-                onEachFeature={onEachPane}
+                style={getFeatureStyle}
+                onEachFeature={onEachFeature}
             />
-            <FitMapToGeoJson geoJson={geoJson} />
+
+            <FitMapToGeoJson geoJson={geoJson} zoom={ZOOM}/>
         </MapContainer>
         <Legend geoJson={geoJson} />
-    </div>
-
+    </div>;
 }
 
 export default ElectoralMap;

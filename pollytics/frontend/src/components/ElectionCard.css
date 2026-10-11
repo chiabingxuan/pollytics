@@ -7,6 +7,7 @@
     border-radius: 0.5rem;
     background-color: white;
     color: #1e293b;
+    font-size: 0.85rem;
 }
 
 .election-card > div {
@@ -16,7 +17,7 @@
 }
 
 .election-card-label {
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     font-weight: bold;
     color: #64748b;
     text-transform: uppercase;

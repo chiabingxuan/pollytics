@@ -1,24 +1,50 @@
 .sidebar {
-    font-size: 0.8125rem;
-    flex: 0 1 clamp(18rem, 28vw, 25rem);
-    width: clamp(18rem, 28vw, 25rem);
+    font-size: 0.7rem;
+    flex: 0 1 clamp(17rem, 25vw, 22rem);
+    width: clamp(17rem, 25vw, 22rem);
     min-width: 0;
-    padding: 1rem;
+    padding: 0.85rem;
+    box-sizing: border-box;
     background: white;
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
     overflow-y: auto;
     text-align: center;
+    display: grid;
+    grid-template-rows: auto auto auto;
+    align-content: start;
 }
 
-.sidebar hr {
-    border: none;
-    border-top: 1px solid #ddd;
-    margin: 1.25rem 0;
+.sidebar-display {
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 1rem 0;
+}
+
+/* Divider between displays */
+.sidebar-display + .sidebar-display {
+    grid-row: 3;
+    margin-top: 0.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #d1d5db;
+}
+
+.sidebar-display:empty {
+    display: none;
+}
+
+.sidebar-display h2 {
+    margin: 0 0 0.375rem;
+}
+
+.sidebar-display h3 {
+    margin: 0 0 0.75rem;
 }
 
 .sidebar table {
     margin: 0 auto;
-    border-spacing: clamp(0.75rem, 2vw, 1.5rem) 0;
+    border-spacing: clamp(0.5rem, 1vw, 0.75rem) 0;
 }
 
 .sidebar td:first-child {
@@ -32,10 +58,10 @@
 
 .result-color {
     display: inline-block;
-    width: 0.625rem;
-    height: 0.625rem;
+    width: 0.5rem;
+    height: 0.5rem;
     border-radius: 50%;
-    margin-right: 0.375rem;
+    margin-right: 0.25rem;
 }
 
 .result-party {
@@ -45,11 +71,13 @@
 
 .back-button {
     border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
+    border-radius: 0.25rem;
     background: white;
-    padding: 0.5rem 0.75rem;
+    padding: 0.375rem 0.5rem;
     font-size: 0.75rem;
     cursor: pointer;
+    grid-row: 1;
+    justify-self: center;
 }
 
 .back-button:hover {
@@ -60,7 +88,16 @@
     .sidebar {
         width: 100%;
         flex: none;
-        max-height: 32rem;
-        box-sizing: border-box;
+        font-size: 0.825rem;
+        max-height: none;
+        grid-template-rows: auto auto auto;
+    }
+
+    /*
+    If back button does not exist, sidebar is empty.
+    Hide empty sidebars for mobile devices
+    */
+    .sidebar:not(:has(.back-button)) {
+        display: none;
     }
 }

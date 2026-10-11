@@ -1,50 +1,14 @@
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 
-import type { LocationResult, Pane } from "../types";
-import { fixAntimeridian } from "../utils/antimeridianFix";
+import { fixAntimeridian } from "./antimeridianFix";
+import { formatAllResults, getBestResult } from "./voteUtils";
+import type { FormattedResult, LocationResult, Pane } from "../types";
 
 function formatLocationFeature(locationRes: LocationResult, locationFeature: Feature): Feature<Geometry, Pane> {
-    // Pool all the vote counts for this location and find total votes
-    const allResults = [
-        ...locationRes.results.participations,
-        // Other results do not have a party, so we add a null party here.
-        // This gives participation results and other results the same structure,
-        // allowing them to be handled uniformly when displayed in the sidebar.
-        ...locationRes.results.other.map((result) => ({
-            ...result,
-            party: null
-        }))
-    ]
-    const totalVotes = allResults.reduce(
-        (total, result) => total + result.votes,
-        0
-    );
-
-    // Add vote proportions to the results of this location
-    const allResultsWithProportion = allResults.map((result) => ({
-        ...result,
-        proportion: result.votes / totalVotes
-    }))
-
-    // There should always be at least one result for the location in question.
-    // The backend API has an assertion that will be flagged if the location queried
-    // has no results. Thus the error below should never be thrown.
-    const [
-        firstResultWithProportion,
-        ...remainingResultsWithProportion
-    ] = allResultsWithProportion;
-    if (!firstResultWithProportion) {
-        throw new Error(
-            `No results found for ${locationRes.location.type} `
-                + `${locationRes.location.name} (id: ${locationRes.location.id}).`
-        );
-    }
+    const formattedResults: FormattedResult[] = formatAllResults(locationRes.results);
 
     // Find the winner of the location
-    const bestResultWithProportion = remainingResultsWithProportion.reduce(
-        (bestRes, res) => res.votes > bestRes.votes ? res : bestRes,
-        firstResultWithProportion
-    );
+    const bestResult = getBestResult(locationRes.location, formattedResults);
 
     // Retain all old attributes in the feature
     return {
@@ -58,15 +22,15 @@ function formatLocationFeature(locationRes: LocationResult, locationFeature: Fea
             type: locationRes.location.type,
 
             // Used to colour the location
-            winningProportion: bestResultWithProportion.proportion,
-            winningColor: bestResultWithProportion.color,
+            winningProportion: bestResult.proportion,
+            winningColor: bestResult.color,
 
-            results: allResultsWithProportion
+            results: formattedResults
         }
     };
 }
 
-export function getGeoJson(
+export function getFormattedGeoJson(
     locationResults: LocationResult[],
     locationMaps: FeatureCollection
 ): FeatureCollection<Geometry, Pane> {
@@ -115,4 +79,14 @@ export function getGeoJson(
     }
 
     return fixAntimeridian(geoJson);
+}
+
+// Get GeoJSON only containing the specified feature
+export function getFormattedGeoJsonFromFeature(feature: Feature<Geometry, Pane>): FeatureCollection<Geometry, Pane> {
+    const geoJson: FeatureCollection<Geometry, Pane> = {
+        type: "FeatureCollection",
+        features: [feature]
+    };
+
+    return geoJson;
 }

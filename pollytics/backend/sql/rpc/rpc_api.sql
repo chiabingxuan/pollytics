@@ -41,10 +41,10 @@ AS $$
             ON p.id = ptp.party_id
     ) AS ptp_and_p
         ON ptp_and_p.candidate_id = pt.candidate_id
-       AND ptp_and_p.election_id = pt.election_id
-       AND ptp_and_p.division_id = pt.division_id
+        AND ptp_and_p.election_id = pt.election_id
+        AND ptp_and_p.division_id = pt.division_id
     WHERE pt.election_id = p_election_id
-    ORDER BY d.id, pt.total_votes DESC;
+    ORDER BY d.id ASC, pt.total_votes DESC;
 $$;
 
 
@@ -74,7 +74,91 @@ AS $$
     INNER JOIN divisions d
         ON d.id = r.division_id
     WHERE o.election_id = p_election_id
-    ORDER BY d.id, o.votes DESC;
+    ORDER BY d.id ASC, o.votes DESC;
+$$;
+
+
+/* For a given division and recurring election, get historical participation results for this division. */
+CREATE OR REPLACE FUNCTION get_historical_participation_results_for_division(
+    p_division_id INT,
+    p_country_name VARCHAR,
+    p_election_type VARCHAR
+)
+RETURNS TABLE (
+    year INT,
+    candidate_name VARCHAR,
+    party_name VARCHAR,
+    party_color VARCHAR,
+    votes INT
+)
+LANGUAGE SQL
+AS $$
+    SELECT
+        e.year,
+        c.name AS candidate_name,
+        ptp_and_p.party_name AS party_name,
+        ptp_and_p.party_color AS party_color,
+        pt.total_votes AS votes
+    FROM participations pt
+    INNER JOIN races r
+        ON r.election_id = pt.election_id
+        AND r.division_id = pt.division_id
+    INNER JOIN candidates c
+        ON c.id = pt.candidate_id
+    INNER JOIN elections e
+        ON e.id = r.election_id
+    INNER JOIN countries ct
+        ON ct.id = e.country_id
+    LEFT JOIN ( -- left join to account for independent candidates with no parties
+        SELECT
+            ptp.candidate_id,
+            ptp.election_id,
+            ptp.division_id,
+            p.name AS party_name,
+            p.color AS party_color
+        FROM participation_parties ptp
+        INNER JOIN parties p
+            ON p.id = ptp.party_id
+    ) AS ptp_and_p
+        ON ptp_and_p.candidate_id = pt.candidate_id
+        AND ptp_and_p.election_id = pt.election_id
+        AND ptp_and_p.division_id = pt.division_id
+    WHERE pt.division_id = p_division_id
+        AND ct.name = p_country_name
+        AND e.type = p_election_type
+    ORDER BY e.year ASC, pt.total_votes DESC;
+$$;
+
+
+/* For a given division and recurring election, get historical other results for this division. */
+CREATE OR REPLACE FUNCTION get_historical_other_results_for_division(
+    p_division_id INT,
+    p_country_name VARCHAR,
+    p_election_type VARCHAR
+)
+RETURNS TABLE (
+    year INT,
+    vote_type VARCHAR,
+    votes INT
+)
+LANGUAGE SQL
+AS $$
+    SELECT
+        e.year,
+        o.type AS vote_type,
+        o.votes
+    FROM other_racewide_results o
+    INNER JOIN races r
+        ON r.election_id = o.election_id
+        AND r.division_id = o.division_id
+    INNER JOIN elections e
+        ON e.id = r.election_id
+    INNER JOIN countries c
+        ON c.id = e.country_id
+    WHERE o.division_id = p_division_id
+        AND c.name = p_country_name
+        AND e.type = p_election_type
+    ORDER BY e.year ASC, o.votes DESC;
 $$;
 
 
@@ -123,11 +207,11 @@ AS $$
             ON p.id = ptp.party_id
     ) AS ptp_and_p
         ON ptp_and_p.candidate_id = pt.candidate_id
-       AND ptp_and_p.election_id = pt.election_id
-       AND ptp_and_p.division_id = pt.division_id
+        AND ptp_and_p.election_id = pt.election_id
+        AND ptp_and_p.division_id = pt.division_id
     WHERE ptr.election_id = p_election_id
-    AND ptr.division_id = p_division_id
-    ORDER BY r.id, ptr.votes DESC;
+        AND ptr.division_id = p_division_id
+    ORDER BY r.id ASC, ptr.votes DESC;
 $$;
 
 
@@ -155,8 +239,96 @@ AS $$
     INNER JOIN regions r
         ON r.id = o.region_id
     WHERE o.election_id = p_election_id
-    AND o.division_id = p_division_id
-    ORDER BY r.id, o.votes DESC;
+        AND o.division_id = p_division_id
+    ORDER BY r.id ASC, o.votes DESC;
+$$;
+
+
+/* For a given region and recurring election, get historical participation results for this region. */
+CREATE OR REPLACE FUNCTION get_historical_participation_results_for_region(
+    p_region_id INT,
+    p_country_name VARCHAR,
+    p_election_type VARCHAR
+)
+RETURNS TABLE (
+    year INT,
+    candidate_name VARCHAR,
+    party_name VARCHAR,
+    party_color VARCHAR,
+    votes INT
+)
+LANGUAGE SQL
+AS $$
+    SELECT
+        e.year,
+        c.name AS candidate_name,
+        ptp_and_p.party_name AS party_name,
+        ptp_and_p.party_color AS party_color,
+        ptr.votes
+    FROM participation_regional_results ptr
+    INNER JOIN participations pt
+        ON pt.candidate_id = ptr.candidate_id
+        AND pt.election_id = ptr.election_id
+        AND pt.division_id = ptr.division_id
+    INNER JOIN candidates c
+        ON c.id = pt.candidate_id
+    INNER JOIN races r
+        ON r.election_id = pt.election_id
+        AND r.division_id = pt.division_id
+    INNER JOIN elections e
+        ON e.id = r.election_id
+    INNER JOIN countries ct
+        ON ct.id = e.country_id
+    LEFT JOIN ( -- left join to account for independent candidates with no parties
+        SELECT
+            ptp.candidate_id,
+            ptp.election_id,
+            ptp.division_id,
+            p.name AS party_name,
+            p.color AS party_color
+        FROM participation_parties ptp
+        INNER JOIN parties p
+            ON p.id = ptp.party_id
+    ) AS ptp_and_p
+        ON ptp_and_p.candidate_id = pt.candidate_id
+        AND ptp_and_p.election_id = pt.election_id
+        AND ptp_and_p.division_id = pt.division_id
+    WHERE ptr.region_id = p_region_id
+        AND ct.name = p_country_name
+        AND e.type = p_election_type
+    ORDER BY e.year ASC, ptr.votes DESC;
+$$;
+
+
+/* For a given region and recurring election, get historical other results for this region. */
+CREATE OR REPLACE FUNCTION get_historical_other_results_for_region(
+    p_region_id INT,
+    p_country_name VARCHAR,
+    p_election_type VARCHAR
+)
+RETURNS TABLE (
+    year INT,
+    vote_type VARCHAR,
+    votes INT
+)
+LANGUAGE SQL
+AS $$
+    SELECT
+        e.year,
+        o.type AS vote_type,
+        o.votes
+    FROM other_regional_results o
+    INNER JOIN races r
+        ON r.election_id = o.election_id
+        AND r.division_id = o.division_id
+    INNER JOIN elections e
+        ON e.id = r.election_id
+    INNER JOIN countries c
+        ON c.id = e.country_id
+    WHERE o.region_id = p_region_id
+        AND c.name = p_country_name
+        AND e.type = p_election_type
+    ORDER BY e.year ASC, o.votes DESC;
 $$;
 
 
@@ -194,7 +366,7 @@ AS $$
     Then DISTINCT ON (d.id) chooses the first row (latest border as of the election)
     for each division. These will be the borders used for the election.
     */
-    ORDER BY d.id, db.year_drawn DESC;
+    ORDER BY d.id ASC, db.year_drawn DESC;
 $$;
 
 
@@ -248,5 +420,5 @@ AS $$
     Then DISTINCT ON (r.id) chooses the first row (latest border as of the election)
     for each region. These will be the borders used for the election.
     */
-    ORDER BY r.id, rb.year_drawn DESC;
+    ORDER BY r.id ASC, rb.year_drawn DESC;
 $$;

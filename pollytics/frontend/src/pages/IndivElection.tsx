@@ -11,7 +11,7 @@ import "./IndivElection.css";
 
 function getLoadedIndivElectionContent(election: Election) {
     return <>
-        <h2>Election Dashboard</h2>
+        <h2>Election Explorer</h2>
 
         {/* Display basic details of the election */}
         <section className="election-info">
@@ -31,7 +31,11 @@ function getLoadedIndivElectionContent(election: Election) {
             </div>
         </section>
 
-        <Dashboard electionId={election.id}/>
+        <Dashboard
+            electionId={election.id}
+            electionCountry={election.country}
+            electionType={election.type}
+        />
     </>
 }
 
