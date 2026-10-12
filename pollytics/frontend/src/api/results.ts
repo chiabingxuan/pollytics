@@ -1,7 +1,16 @@
+import { APIError } from "../utils/APIError";
+import { Level } from "../utils/types";
 import { API_URL } from "./params";
 
-import { Level, type Division, type DivisionResult, type DivisionResultResponse, type Region, type RegionResult, type RegionResultResponse, type YearResult } from "../types";
-import { APIError } from "../utils/APIError";
+import type {
+    Division,
+    DivisionResult,
+    DivisionResultResponse,
+    Region,
+    RegionResult,
+    RegionResultResponse,
+    YearResult,
+} from "../utils/types";
 
 export async function fetchDivisionResults(electionId: number): Promise<DivisionResult[]> {
     const response = await fetch(`${API_URL}/election_results/${electionId}`);

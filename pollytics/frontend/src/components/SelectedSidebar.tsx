@@ -1,5 +1,5 @@
-import { Level, type Pane } from "../types";
 import { DEFAULT_COLOR } from "../utils/colorUtils";
+import { Level, type Pane } from "../utils/types";
 
 import "./SelectedSidebar.css";
 

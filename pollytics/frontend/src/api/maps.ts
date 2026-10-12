@@ -1,7 +1,7 @@
 import type { FeatureCollection } from "geojson";
 
-import { API_URL } from "./params";
 import { APIError } from "../utils/APIError";
+import { API_URL } from "./params";
 
 export async function fetchDivisionMaps(electionId: number): Promise<FeatureCollection> {
     const response = await fetch(`${API_URL}/election_maps/${electionId}`);

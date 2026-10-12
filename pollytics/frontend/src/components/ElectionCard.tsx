@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-import type { Election } from "../types";
+import type { Election } from "../utils/types";
 
 import "./ElectionCard.css";
 

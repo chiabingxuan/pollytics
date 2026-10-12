@@ -1,6 +1,19 @@
-import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+    CartesianGrid,
+    Legend,
+    Line,
+    LineChart,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis
+} from "recharts";
 
-import type { FormattedHistoricalData, FormattedHistoricalRecord, Pane } from "../types";
+import type {
+    FormattedHistoricalData,
+    FormattedHistoricalRecord,
+    Pane
+} from "../utils/types";
 
 import "./Gallery.css";
 

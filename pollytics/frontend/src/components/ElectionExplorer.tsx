@@ -1,26 +1,37 @@
 import { useEffect, useState } from "react";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 
+import { fetchDivisionMaps, fetchRegionMaps } from "../api/maps";
+import {
+    fetchDivisionResults,
+    fetchHistoricalResultsForDivision,
+    fetchHistoricalResultsForRegion,
+    fetchRegionResults
+} from "../api/results";
+import { getFormattedGeoJson, getFormattedGeoJsonFromFeature } from "../utils/geometryUtils";
+import { getFormattedHistoricalData } from "../utils/voteUtils";
+import { Level } from "../utils/types";
+
+import type { APIError } from "../utils/APIError";
+import type {
+    FormattedHistoricalData,
+    Pane
+} from "../utils/types";
+
 import ElectoralMap from "./ElectoralMap";
 import ErrorMessage from "./ErrorMessage";
 import Gallery from "./Gallery";
 import SelectedSidebar from "./SelectedSidebar";
-import { fetchDivisionMaps, fetchRegionMaps } from "../api/maps";
-import { fetchDivisionResults, fetchHistoricalResultsForDivision, fetchHistoricalResultsForRegion, fetchRegionResults } from "../api/results";
-import { Level, type FormattedHistoricalData, type Pane } from "../types";
-import type { APIError } from "../utils/APIError";
-import { getFormattedGeoJson, getFormattedGeoJsonFromFeature } from "../utils/geometryUtils";
-import { getFormattedHistoricalData } from "../utils/voteUtils";
 
-import "./Dashboard.css";
+import "./ElectionExplorer.css";
 
-interface DashboardProps {
+interface ElectionExplorerProps {
     electionId: number;
     electionCountry: string;
     electionType: string;
 }
 
-function Dashboard({ electionId, electionCountry, electionType }: DashboardProps) {
+function ElectionExplorer({ electionId, electionCountry, electionType }: ElectionExplorerProps) {
     // GeoJSON across all divisions
     const [completeGeoJson, setCompleteGeoJson] = useState<FeatureCollection<Geometry, Pane> | null>(null);
 
@@ -254,4 +265,4 @@ function Dashboard({ electionId, electionCountry, electionType }: DashboardProps
     </>;
 }
 
-export default Dashboard;
+export default ElectionExplorer;

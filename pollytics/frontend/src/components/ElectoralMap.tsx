@@ -1,12 +1,14 @@
-import { useEffect } from "react";
 import L from "leaflet";
-import type { LeafletMouseEvent, Path } from "leaflet";
+import { useEffect } from "react";
 import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
+
 import type { Feature, FeatureCollection, Geometry } from "geojson";
+import type { LeafletMouseEvent, Path } from "leaflet";
+
+import { DEFAULT_COLOR, getColorFromWinningProportion } from "../utils/colorUtils";
+import type { Level, Pane } from "../utils/types";
 
 import Legend from "./Legend";
-import type { Level, Pane } from "../types";
-import { DEFAULT_COLOR, getColorFromWinningProportion } from "../utils/colorUtils";
 
 import "./ElectoralMap.css";
 

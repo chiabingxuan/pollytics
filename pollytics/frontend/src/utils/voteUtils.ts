@@ -1,5 +1,12 @@
 import { INDEPENDENT_COLOR } from "./colorUtils";
-import type { CollatedResult, Location, FormattedResult, YearResult, FormattedHistoricalData } from "../types";
+
+import type {
+    CollatedResult,
+    FormattedHistoricalData,
+    FormattedResult,
+    Location,
+    YearResult,
+} from "./types";
 
 const INDEPENDENT_NAME = "INDEPENDENT";
 
