@@ -15,8 +15,8 @@ import "./ElectoralMap.css";
 interface ElectoralMapProps {
     geoJson: FeatureCollection<Geometry, Pane>;
     currentView: Level;
-    updateHoveredLocationPaneOnHover: (pane: Pane) => void;
-    updateHoveredLocationPaneOnLeave: () => void;
+    setHoveredLocationPaneOnHover: (pane: Pane) => void;
+    setHoveredLocationPaneOnLeave: () => void;
     handleSelectedFeature: (feature: Feature<Geometry, Pane>) => void;
 }
 
@@ -64,8 +64,8 @@ function FitMapToGeoJson({ geoJson, zoom }: FitMapToGeoJsonProps) {
 function ElectoralMap({
     geoJson,
     currentView,
-    updateHoveredLocationPaneOnHover,
-    updateHoveredLocationPaneOnLeave,
+    setHoveredLocationPaneOnHover,
+    setHoveredLocationPaneOnLeave,
     handleSelectedFeature
 }: ElectoralMapProps) {
     const MAP_ATTRIBUTION: string = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
@@ -79,7 +79,7 @@ function ElectoralMap({
         };
         const pane: Pane = layer.feature.properties;
         
-        updateHoveredLocationPaneOnHover(pane);
+        setHoveredLocationPaneOnHover(pane);
 
         layer.setStyle({
             weight: 3,
@@ -94,7 +94,7 @@ function ElectoralMap({
         };
         const feature: Feature<Geometry, Pane> = layer.feature;
 
-        updateHoveredLocationPaneOnLeave();
+        setHoveredLocationPaneOnLeave();
 
         layer.setStyle(getFeatureStyle(feature));
     };
@@ -120,28 +120,30 @@ function ElectoralMap({
         });
     };
 
-    return <div className="electoral-map">
-        <MapContainer 
-            center={[0, 0]} // Placeholder coordinates
-            zoom={ZOOM}
-            scrollWheelZoom={true}
-        >
-            <TileLayer attribution={MAP_ATTRIBUTION} url={MAP_URL} />
+    return (
+        <div className="electoral-map">
+            <MapContainer 
+                center={[0, 0]} // Placeholder coordinates
+                zoom={ZOOM}
+                scrollWheelZoom={true}
+            >
+                <TileLayer attribution={MAP_ATTRIBUTION} url={MAP_URL} />
 
-            {/* Use a key to force GeoJSON layer to be recreated when switching between
-            complete view, division view and regional view. This ensures Leaflet correctly renders all division panes when
-            returning from a selected division */}
-            <GeoJSON
-                key={currentView}
-                data={geoJson}
-                style={getFeatureStyle}
-                onEachFeature={onEachFeature}
-            />
+                {/* Use a key to force GeoJSON layer to be recreated when switching between
+                complete view, division view and regional view. This ensures Leaflet correctly renders all division panes when
+                returning from a selected division */}
+                <GeoJSON
+                    key={currentView}
+                    data={geoJson}
+                    style={getFeatureStyle}
+                    onEachFeature={onEachFeature}
+                />
 
-            <FitMapToGeoJson geoJson={geoJson} zoom={ZOOM}/>
-        </MapContainer>
-        <Legend geoJson={geoJson} />
-    </div>;
+                <FitMapToGeoJson geoJson={geoJson} zoom={ZOOM}/>
+            </MapContainer>
+            <Legend geoJson={geoJson} />
+        </div>
+    );
 }
 
 export default ElectoralMap;

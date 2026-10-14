@@ -1,0 +1,15 @@
+.electoral-visualization {
+    display: flex;
+    width: 100%;
+    max-width: 87.5rem;
+    height: clamp(36rem, 70vh, 50rem);
+    margin: 2rem auto;
+}
+
+@media (max-width: 48rem) {
+    .electoral-visualization {
+        height: auto;
+        min-height: 32rem;
+        flex-direction: column;
+    }
+}

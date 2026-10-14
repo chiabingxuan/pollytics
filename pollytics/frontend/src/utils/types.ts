@@ -21,7 +21,7 @@ const Level = {
 
 type Level = (typeof Level)[keyof typeof Level];
 
-export { Level }
+export { Level };
 
 export interface Location {
     id: number;
@@ -109,4 +109,11 @@ export interface Pane {
     winningColor: string | null;
     winningProportion: number;
     results: FormattedResult[];
+}
+
+// Types for assistant chat
+export interface ChatMessage {
+    id: number;
+    sender: "user" | "assistant";
+    text: string;
 }

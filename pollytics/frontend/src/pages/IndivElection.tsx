@@ -34,6 +34,7 @@ function getLoadedIndivElectionContent(election: Election) {
 
         <ElectionExplorer
             electionId={election.id}
+            electionYear={election.year}
             electionCountry={election.country}
             electionType={election.type}
         />
