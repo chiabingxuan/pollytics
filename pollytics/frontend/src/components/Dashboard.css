@@ -1,4 +1,4 @@
-.dashboard {
+.electoral-visualization {
     display: flex;
     width: 100%;
     max-width: 87.5rem;
@@ -7,10 +7,9 @@
 }
 
 @media (max-width: 48rem) {
-    .dashboard {
+    .electoral-visualization {
         height: auto;
         min-height: 32rem;
         flex-direction: column;
-        margin: 1rem auto;
     }
 }

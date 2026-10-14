@@ -1,16 +1,23 @@
 import { useEffect, useState } from "react";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 
-import ElectoralMap from "./ElectoralMap";
-import ErrorMessage from "./ErrorMessage";
-import Gallery from "./Gallery";
-import SelectedSidebar from "./SelectedSidebar";
 import { fetchDivisionMaps, fetchRegionMaps } from "../api/maps";
-import { fetchDivisionResults, fetchHistoricalResultsForDivision, fetchHistoricalResultsForRegion, fetchRegionResults } from "../api/results";
-import { Level, type FormattedHistoricalData, type Pane } from "../types";
-import type { APIError } from "../utils/APIError";
+import {
+    fetchDivisionResults,
+    fetchHistoricalResultsForDivision,
+    fetchHistoricalResultsForRegion,
+    fetchRegionResults,
+} from "../api/results";
 import { getFormattedGeoJson, getFormattedGeoJsonFromFeature } from "../utils/geometryUtils";
 import { getFormattedHistoricalData } from "../utils/voteUtils";
+import { Level } from "../utils/types";
+
+import type { APIError } from "../utils/APIError";
+import type { FormattedHistoricalData, Pane } from "../utils/types";
+
+import ElectoralMap from "./ElectoralMap";
+import Gallery from "./Gallery";
+import SelectedSidebar from "./SelectedSidebar";
 
 import "./Dashboard.css";
 
@@ -18,40 +25,71 @@ interface DashboardProps {
     electionId: number;
     electionCountry: string;
     electionType: string;
+    completeGeoJson: FeatureCollection<Geometry, Pane> | null;
+    selectedDivisionGeoJson: FeatureCollection<Geometry, Pane> | null;
+    selectedRegionGeoJson: FeatureCollection<Geometry, Pane> | null;
+    selectedDivisionPane: Pane | null;
+    selectedRegionPane: Pane | null;
+    selectedDivisionHistoricalData: FormattedHistoricalData | null;
+    selectedRegionHistoricalData: FormattedHistoricalData | null;
+    setCompleteGeoJson: (feature: FeatureCollection<Geometry, Pane>) => void;
+    setSelectedDivision: (
+        divisionGeoJson: FeatureCollection<Geometry, Pane>,
+        divisionPane: Pane,
+        divisionHistoricalData: FormattedHistoricalData
+    ) => void;
+    setSelectedRegion: (
+        regionGeoJson: FeatureCollection<Geometry, Pane>,
+        regionPane: Pane,
+        regionHistoricalData: FormattedHistoricalData
+    ) => void;
+    exitDivisionView: () => void;
+    exitRegionView: () => void;
+    setErrorMsg: (message: string | null) => void;
 }
 
-function Dashboard({ electionId, electionCountry, electionType }: DashboardProps) {
-    // GeoJSON across all divisions
-    const [completeGeoJson, setCompleteGeoJson] = useState<FeatureCollection<Geometry, Pane> | null>(null);
-
-    // GeoJSONs for selected divisions / regions, if any
-    const [selectedDivisionGeoJson, setSelectedDivisionGeoJson] = useState<FeatureCollection<Geometry, Pane> | null>(null);
-    const [selectedRegionGeoJson, setSelectedRegionGeoJson] = useState<FeatureCollection<Geometry, Pane> | null>(null);
-
-    // Historical data for selected divisions / regions, if any
-    const [selectedDivisionHistoricalData, setSelectedDivisionHistoricalData] = useState<FormattedHistoricalData | null>(null);
-    const [selectedRegionHistoricalData, setSelectedRegionHistoricalData] = useState<FormattedHistoricalData | null>(null);
-
-    // Divisions and regions can be selected by clicking
-    const [selectedDivisionPane, setSelectedDivisionPane] = useState<Pane | null>(null);
-    const [selectedRegionPane, setSelectedRegionPane] = useState<Pane | null>(null);
-
+function Dashboard({
+    electionId,
+    electionCountry,
+    electionType,
+    completeGeoJson,
+    selectedDivisionGeoJson,
+    selectedRegionGeoJson,
+    selectedDivisionPane,
+    selectedRegionPane,
+    selectedDivisionHistoricalData,
+    selectedRegionHistoricalData,
+    setCompleteGeoJson,
+    setSelectedDivision,
+    setSelectedRegion,
+    exitDivisionView,
+    exitRegionView,
+    setErrorMsg
+}: DashboardProps) {
     // Any location (division or region, depending on what is being displayed) can be hovered over
     const [hoveredLocationPane, setHoveredLocationPane] = useState<Pane | null>(null);
-
+    
     const [isLoading, setIsLoading] = useState(true);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     // Note that complete view > division view > regional view
     const displayedGeoJson = selectedRegionGeoJson ?? (selectedDivisionGeoJson ?? completeGeoJson);
 
-    // For the first time, get division results and maps
+    // Get division results and maps, if election ID or complete GeoJSON changes
     useEffect(() => {
+        // Once the complete GeoJSON is saved in state during the first render,
+        // the effect will run again, since the complete GeoJSON is a dependency.
+        // But we don't need to fetch the GeoJSON anymore if that is the case.
+        // The following if clause checks for this
+        if (completeGeoJson) {
+            setIsLoading(false);
+            return;
+        }
+
         setIsLoading(true);
 
         Promise.all([
             fetchDivisionResults(electionId),
-            fetchDivisionMaps(electionId),
+            fetchDivisionMaps(electionId)
         ])
             .then(([divisionResults, divisionMaps]) => {
                 const formattedGeoJson = getFormattedGeoJson(divisionResults, divisionMaps);
@@ -63,11 +101,7 @@ function Dashboard({ electionId, electionCountry, electionType }: DashboardProps
             .finally(() => {
                 setIsLoading(false);
             });
-    }, [electionId]);
-
-    if (errorMsg) {
-        return <ErrorMessage msg={errorMsg}/>;
-    }
+    }, [electionId, completeGeoJson]);
 
     if (isLoading) {
         return <p>Loading...</p>;
@@ -141,11 +175,12 @@ function Dashboard({ electionId, electionCountry, electionType }: DashboardProps
                     ),
                 ])
                     .then(([formattedSelectedDivisionGeoJson, fetchedSelectedDivisionHistoricalResults]) => {
-                        setSelectedDivisionGeoJson(formattedSelectedDivisionGeoJson);
-                        setSelectedDivisionPane(pane);
-                        setSelectedDivisionHistoricalData(
+                        setSelectedDivision(
+                            formattedSelectedDivisionGeoJson,
+                            pane,
                             getFormattedHistoricalData(fetchedSelectedDivisionHistoricalResults)
                         );
+
                     })
                     .catch((error: APIError) => {
                         setErrorMsg(error.message);
@@ -172,6 +207,7 @@ function Dashboard({ electionId, electionCountry, electionType }: DashboardProps
                 }
 
                 setHoveredLocationPane(null);
+                setIsLoading(true);
                 
                 const regionId = pane.id;
 
@@ -181,14 +217,17 @@ function Dashboard({ electionId, electionCountry, electionType }: DashboardProps
                 // Get historical results for this region
                 fetchHistoricalResultsForRegion(regionId, electionCountry, electionType)
                     .then((fetchedSelectedRegionHistoricalResults) => {
-                        setSelectedRegionGeoJson(formattedSelectedRegionGeoJson);
-                        setSelectedRegionPane(pane);
-                        setSelectedRegionHistoricalData(
+                        setSelectedRegion(
+                            formattedSelectedRegionGeoJson,
+                            pane,
                             getFormattedHistoricalData(fetchedSelectedRegionHistoricalResults)
                         );
                     })
                     .catch((error: APIError) => {
                         setErrorMsg(error.message);
+                    })
+                    .finally(() => {
+                        setIsLoading(false);
                     })
 
                 break;
@@ -197,61 +236,60 @@ function Dashboard({ electionId, electionCountry, electionType }: DashboardProps
                 throw new Error("Unknown pane level detected.");
         }
     };
-    
-    return <>
-        <section>
-            <ul>
-                <li>
-                    Hover over an unselected location to preview its election results in the sidebar.
-                </li>
-                <li>
-                    Click a location to select it, keep its election results displayed in the sidebar,
-                    and show additional details below the map.
-                </li>
-            </ul>
-            
-            <div className="dashboard">
-                <SelectedSidebar
-                    selectedDivisionPane={selectedDivisionPane}
-                    selectedRegionPane={selectedRegionPane}
-                    hoveredLocationPane={hoveredLocationPane}
 
-                    // Sidebar has callbacks. The callbacks allow the user to do the following,
-                    // depending on the current view they are in:
-                    // - Back out from regional view and re-enter the division view
-                    // - Back out from division view and re-enter the complete view
-                    exitDivisionView={() => {
-                        setSelectedDivisionGeoJson(null);
-                        setSelectedDivisionPane(null);
-                        setSelectedDivisionHistoricalData(null);
-                    }}
-                    exitRegionView={() => {
-                        setSelectedRegionGeoJson(null);
-                        setSelectedRegionPane(null);
-                        setSelectedRegionHistoricalData(null);
-                    }}
-                />
+    return (
+        <>
+            <section>
+                <ul>
+                    <li>
+                        Hover over an unselected location to preview its election results in the sidebar.
+                    </li>
+                    <li>
+                        Click a location to select it, keep its election results displayed in the sidebar,
+                        and show additional details below the map.
+                    </li>
+                </ul>
+                
+                <div className="electoral-visualization">
+                    <SelectedSidebar
+                        selectedDivisionPane={selectedDivisionPane}
+                        selectedRegionPane={selectedRegionPane}
+                        hoveredLocationPane={hoveredLocationPane}
 
-                <ElectoralMap
-                    geoJson={displayedGeoJson}
-                    currentView={
-                        selectedRegionPane ? Level.REGION
-                            : selectedDivisionPane ? Level.DIVISION
-                            : Level.COMPLETE
-                    }
-                    updateHoveredLocationPaneOnHover={setHoveredLocationPane}
-                    updateHoveredLocationPaneOnLeave={() => setHoveredLocationPane(null)}
-                    handleSelectedFeature={handleSelectedFeature}
-                />
-            </div>
-        </section>
-        <Gallery
-            selectedDivisionPane={selectedDivisionPane}
-            selectedRegionPane={selectedRegionPane}
-            selectedDivisionHistoricalData={selectedDivisionHistoricalData}
-            selectedRegionHistoricalData={selectedRegionHistoricalData}
-        />
-    </>;
+                        // Sidebar has callbacks. The callbacks allow the user to do the following,
+                        // depending on the current view they are in:
+                        // - Back out from regional view and re-enter the division view
+                        // - Back out from division view and re-enter the complete view
+                        exitDivisionView={exitDivisionView}
+                        exitRegionView={exitRegionView}
+                    />
+
+                    <ElectoralMap
+                        geoJson={displayedGeoJson}
+                        currentView={
+                            selectedRegionPane ? Level.REGION
+                                : selectedDivisionPane ? Level.DIVISION
+                                : Level.COMPLETE
+                        }
+                        setHoveredLocationPaneOnHover={setHoveredLocationPane}
+                        setHoveredLocationPaneOnLeave={() => setHoveredLocationPane(null)}
+                        handleSelectedFeature={handleSelectedFeature}
+                    />
+                </div>
+            </section>
+            <Gallery
+                selectedDivisionPane={selectedDivisionPane}
+                selectedRegionPane={selectedRegionPane}
+                selectedDivisionHistoricalData={selectedDivisionHistoricalData}
+                selectedRegionHistoricalData={selectedRegionHistoricalData}
+            />
+        </>
+    );
 }
 
 export default Dashboard;
+
+
+
+
+

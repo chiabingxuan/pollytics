@@ -2,7 +2,8 @@ import type { Feature, FeatureCollection, Geometry } from "geojson";
 
 import { fixAntimeridian } from "./antimeridianFix";
 import { formatAllResults, getBestResult } from "./voteUtils";
-import type { FormattedResult, LocationResult, Pane } from "../types";
+
+import type { FormattedResult, LocationResult, Pane } from "./types";
 
 function formatLocationFeature(locationRes: LocationResult, locationFeature: Feature): Feature<Geometry, Pane> {
     const formattedResults: FormattedResult[] = formatAllResults(locationRes.results);

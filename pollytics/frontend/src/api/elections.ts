@@ -1,6 +1,7 @@
-import { API_URL } from "./params";
-import type { Election, ElectionsResponse } from "../types";
 import { APIError } from "../utils/APIError";
+import { API_URL } from "./params";
+
+import type { Election, ElectionsResponse } from "../utils/types";
 
 // Accepts election id as a string.
 // When making the HTTP request, the backend will help check

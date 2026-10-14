@@ -1,0 +1,38 @@
+.explorer-tabs {
+    max-width: 1400px;
+    margin: 2rem auto;
+    padding: 0;
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid #dfe3e8;
+}
+
+.explorer-tabs a {
+    padding: 0.75rem 1.25rem;
+    border-bottom: 3px solid transparent;
+    color: #687681;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition:
+        color 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.explorer-tabs a:hover {
+    color: #253b53;
+}
+
+.explorer-tabs a.active {
+    border-bottom-color: #253b53;
+    color: #253b53;
+}
+
+@media (max-width: 36rem) {
+    .explorer-tabs a {
+        flex: 1;
+        padding: 0.7rem 0.5rem;
+        text-align: center;
+        font-size: 0.8rem;
+    }
+}

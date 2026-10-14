@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-import type { Election } from "../types";
+import type { Election } from "../utils/types";
 
 import "./ElectionCard.css";
 
@@ -10,7 +10,7 @@ interface ElectionCardProps {
 
 function ElectionCard({ election }: ElectionCardProps) {
     return (
-        <Link to={`/dashboards/${election.id}`}>
+        <Link to={`/elections/${election.id}`}>
             <article className="election-card">
                 <div>
                     <span className="election-card-label">Year</span>

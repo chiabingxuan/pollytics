@@ -1,7 +1,13 @@
 import type { Feature, FeatureCollection, Geometry } from "geojson";
-import type { Pane } from "../types";
-import { COLOR_INTERVALS, DEFAULT_COLOR, shiftColorToIntervalShade } from "../utils/colorUtils";
+
+import {
+    COLOR_INTERVALS,
+    DEFAULT_COLOR,
+    shiftColorToIntervalShade
+} from "../utils/colorUtils";
+
 import type { ColorInterval } from "../utils/colorUtils";
+import type { Pane } from "../utils/types";
 
 import "./Legend.css";
 

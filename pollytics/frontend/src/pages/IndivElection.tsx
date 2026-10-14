@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { fetchElection } from "../api/elections";
-import Dashboard from "../components/Dashboard";
+import ElectionExplorer from "../components/ElectionExplorer";
 import ErrorMessage from "../components/ErrorMessage";
-import type { Election } from "../types";
+
 import type { APIError } from "../utils/APIError";
+import type { Election } from "../utils/types";
 
 import "./IndivElection.css";
 
@@ -31,8 +32,9 @@ function getLoadedIndivElectionContent(election: Election) {
             </div>
         </section>
 
-        <Dashboard
+        <ElectionExplorer
             electionId={election.id}
+            electionYear={election.year}
             electionCountry={election.country}
             electionType={election.type}
         />

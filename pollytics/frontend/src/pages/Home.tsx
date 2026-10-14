@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { fetchElections } from "../api/elections";
 import ElectionPanel from "../components/ElectionPanel";
 import ErrorMessage from "../components/ErrorMessage";
-import type { Election } from "../types";
+
 import type { APIError } from "../utils/APIError";
+import type { Election } from "../utils/types";
 
 function Home() {
     const [elections, setElections] = useState<Election[]>([]);
