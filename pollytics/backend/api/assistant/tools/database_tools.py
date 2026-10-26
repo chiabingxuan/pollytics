@@ -1,20 +1,9 @@
 from dotenv import load_dotenv
-from langchain.agents.middleware import ToolCallLimitMiddleware
 from langchain_core.tools import tool
-from langchain_google_genai import ChatGoogleGenerativeAI
 import os
 import psycopg
 from typing import Any
 
-from .agent import Agent
-from ..utils.agent_types import DatabaseAgentResponse
-from ..utils.prompts import DATABASE_AGENT_SYSTEM_PROMPT
-
-
-MODEL_NAME = "gemini-3.5-flash-lite"
-MAX_TABLE_NAME_CHECKS = 2
-MAX_SCHEMA_CHECKS = 3
-MAX_QUERIES = 8
 
 load_dotenv()
 supabase_db_url = os.environ.get("SUPABASE_DB_URL")
@@ -180,40 +169,3 @@ def query_database(sql_query: str) -> list[dict[str, Any]] | str:
 
     except (ValueError, RuntimeError) as error:
         return f"Database error: {error}"
-
-
-class DatabaseAgent(Agent):
-    def __init__(self, api_key):
-        super().__init__(
-            # LLM used
-            model=ChatGoogleGenerativeAI(
-                model=MODEL_NAME,
-                api_key=api_key
-            ),
-
-            tools=[get_table_names_in_database, get_database_schema, query_database],
-
-            system_prompt=DATABASE_AGENT_SYSTEM_PROMPT.format(),
-
-            # Limit the number of times each tool is called
-            middleware=[
-                ToolCallLimitMiddleware(
-                    tool_name="get_table_names_in_database",
-                    run_limit=MAX_TABLE_NAME_CHECKS,
-                    exit_behavior="continue",
-                ),
-                ToolCallLimitMiddleware(
-                    tool_name="get_database_schema",
-                    run_limit=MAX_SCHEMA_CHECKS,
-                    exit_behavior="continue",
-                ),
-                ToolCallLimitMiddleware(
-                    tool_name="query_database",
-                    run_limit=MAX_QUERIES,
-                    exit_behavior="continue",
-                )
-            ],
-
-            # Pydantic model to specify the output format of the agent
-            response_format=DatabaseAgentResponse
-        )

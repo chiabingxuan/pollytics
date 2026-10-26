@@ -1,20 +1,11 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from ddgs import DDGS
 from ddgs.exceptions import DDGSException
-from langchain.agents.middleware import ToolCallLimitMiddleware
 from langchain_core.tools import tool
-from langchain_google_genai import ChatGoogleGenerativeAI
 from trafilatura import extract
 
-from .agent import Agent
-from ..utils.agent_types import SearchAgentResponse
-from ..utils.prompts import SEARCH_AGENT_SYSTEM_PROMPT
 
-
-MODEL_NAME = "gemini-3.5-flash-lite"
-MAX_SEARCHES = 3
 MAX_SEARCH_RESULTS_PER_CALL = 3
-MIN_SOURCES_IN_OUTPUT = 3
 
 
 def search_with_ddgs(query: str) -> list[dict[str, str]]:
@@ -103,33 +94,3 @@ def search_and_extract(query: str) -> list[dict[str, str]]:
                 extracted_sources.append(source)
 
     return extracted_sources
-
-
-class SearchAgent(Agent):
-    def __init__(self, api_key):
-        super().__init__(
-            # LLM used
-            model=ChatGoogleGenerativeAI(
-                model=MODEL_NAME,
-                api_key=api_key
-            ),
-
-            tools=[search_and_extract],
-
-            system_prompt=SEARCH_AGENT_SYSTEM_PROMPT.format(
-                max_searches=MAX_SEARCHES,
-                min_sources_in_output=MIN_SOURCES_IN_OUTPUT
-            ),
-
-            # Pydantic model to specify the output format of the agent
-            response_format=SearchAgentResponse,
-
-            # Limit the number of times the tool is called
-            middleware=[
-                ToolCallLimitMiddleware(
-                    tool_name="search_and_extract",
-                    run_limit=MAX_SEARCHES,
-                    exit_behavior="continue"
-                )
-            ]
-        )
