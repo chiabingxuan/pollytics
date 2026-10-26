@@ -2,11 +2,13 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic_geojson import FeatureModel, FeatureCollectionModel
-from models import Division, DivisionResult, Election, ElectionsResponse, ElectionType, OtherResult, ParticipationResult, Region, RegionResult, YearResult
 import os
 from supabase import create_client, Client
 from typing import Annotated, Any
+
+from api_types import Division, DivisionResult, Election, ElectionsResponse, ElectionType, OtherResult, ParticipationResult, Region, RegionResult, YearResult
 from whitelist import ALLOWED_ORIGINS
+
 
 load_dotenv()
 
