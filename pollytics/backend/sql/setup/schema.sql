@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS elections (
     name VARCHAR(256) NOT NULL,
     year INT NOT NULL,
     type VARCHAR(64) NOT NULL CHECK (type IN ('PRESIDENT', 'SENATE', 'HOUSE', 'GOVERNOR')),
-    UNIQUE (country_id, name, year)
+    UNIQUE (country_id, name, year, type)
 );
 
 /*
