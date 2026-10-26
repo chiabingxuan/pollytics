@@ -45,7 +45,7 @@ interface DashboardProps {
     ) => void;
     exitDivisionView: () => void;
     exitRegionView: () => void;
-    setErrorMsg: (message: string | null) => void;
+    setErrorMsg: (message: string) => void;
 }
 
 function Dashboard({

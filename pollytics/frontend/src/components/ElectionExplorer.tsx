@@ -126,8 +126,6 @@ function ElectionExplorer({ electionId, electionYear, electionCountry, electionT
                             electionYear={electionYear}
                             electionCountry={electionCountry}
                             electionType={electionType}
-                            selectedDivisionPane={selectedDivisionPane}
-                            selectedRegionPane={selectedRegionPane}
                             setInput={setChatInput}
                             setMessages={setChatMessages}
                         />

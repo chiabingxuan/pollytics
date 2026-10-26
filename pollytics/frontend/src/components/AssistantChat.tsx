@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import type { ChatMessage, Pane } from "../utils/types";
+import type { ChatMessage } from "../utils/types";
 
 import "./AssistantChat.css";
 
@@ -9,8 +9,6 @@ interface AssistantChatProps {
     electionYear: number;
     electionCountry: string;
     electionType: string;
-    selectedDivisionPane: Pane | null;
-    selectedRegionPane: Pane | null;
     input: string;
     messages: ChatMessage[];
     setInput: (input: string) => void;
@@ -111,8 +109,6 @@ function AssistantChat({
     electionYear,
     electionCountry,
     electionType,
-    selectedDivisionPane,
-    selectedRegionPane,
     input,
     messages,
     setInput,
