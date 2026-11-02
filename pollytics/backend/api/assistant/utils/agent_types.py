@@ -1,6 +1,5 @@
 from datetime import date
 from pydantic import BaseModel, Field, HttpUrl
-from typing import Any
 
 
 ### SEARCH AGENT TYPES ###

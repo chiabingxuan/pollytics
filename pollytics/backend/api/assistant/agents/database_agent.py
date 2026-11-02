@@ -12,9 +12,10 @@ from ..utils.prompts import DATABASE_AGENT_SYSTEM_PROMPT
 
 
 MODEL_NAME = "gemini-3.5-flash-lite"
-MAX_TABLE_NAME_CHECKS = 2
-MAX_SCHEMA_CHECKS = 3
-MAX_QUERIES = 8
+MAX_TABLE_NAME_CHECKS = 1
+MAX_SCHEMA_CHECKS = 1
+MAX_QUERIES = 10
+THINKING_LEVEL = "minimal"
 
 load_dotenv()
 supabase_db_url = os.environ.get("SUPABASE_DB_URL")
@@ -188,12 +189,17 @@ class DatabaseAgent(Agent):
             # LLM used
             model=ChatGoogleGenerativeAI(
                 model=MODEL_NAME,
-                api_key=api_key
+                api_key=api_key,
+                thinking_level=THINKING_LEVEL
             ),
 
             tools=[get_table_names_in_database, get_database_schema, query_database],
 
-            system_prompt=DATABASE_AGENT_SYSTEM_PROMPT.format(),
+            system_prompt=DATABASE_AGENT_SYSTEM_PROMPT.format(
+                max_table_name_checks=MAX_TABLE_NAME_CHECKS,
+                max_schema_checks=MAX_SCHEMA_CHECKS,
+                max_sql_queries=MAX_QUERIES
+            ),
 
             # Limit the number of times each tool is called
             middleware=[

@@ -1,108 +1,194 @@
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from ddgs import DDGS
-from ddgs.exceptions import DDGSException
+import asyncio
+from datetime import date
+from gnews import GNews, GNewsException, NetworkError
+from gnews.utils.constants import AVAILABLE_COUNTRIES
+from googlenewsdecoder import gnews_decoder_async
 from langchain.agents.middleware import ToolCallLimitMiddleware
 from langchain_core.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
-from trafilatura import extract
 
 from .agent import Agent
 from ..utils.agent_types import SearchAgentResponse
 from ..utils.prompts import SEARCH_AGENT_SYSTEM_PROMPT
 
 
-MODEL_NAME = "gemini-3.5-flash-lite"
+MODEL_NAME = "gemini-3.1-flash-lite"
+MAX_AVAILABLE_COUNTRIES_CHECKS = 1
 MAX_SEARCHES = 3
-MAX_SEARCH_RESULTS_PER_CALL = 3
+MAX_SEARCH_RESULTS_PER_CALL = 5
 MIN_SOURCES_IN_OUTPUT = 3
+THINKING_LEVEL = "minimal"
 
 
-def search_with_ddgs(query: str) -> list[dict[str, str]]:
+def validate_date_parts(date_parts: list[int]) -> None:
+    error_message_prefix = f"{date_parts} is an invalid date. "
+
+    if len(date_parts) != 3:
+        raise ValueError(error_message_prefix + "Date must contain exactly three integers: [year, month, day].")
+
+    if not all(isinstance(part, int) for part in date_parts):
+        raise ValueError(error_message_prefix + "Date must contain only integers.")
+
+    year, month, day = date_parts
+
     try:
-        search_results = DDGS().news(query, max_results=MAX_SEARCH_RESULTS_PER_CALL)
-
-    # If the search fails, the search results should be empty
-    except DDGSException:
-        search_results = list()
-
-    return search_results
+        date(year, month, day)
+    except ValueError as error:
+        raise ValueError(error_message_prefix + "Date must contain a valid year, month, and day.") from error
 
 
-def extract_with_ddgs(url: str) -> str | None:
+def resolve_rss_urls(search_results: list[dict]) -> list[dict]:
+    rss_urls = [result["url"] for result in search_results]
+
     try:
-        extracted_text = DDGS().extract(url, fmt="text")["content"]
+        # Resolve to original URLs, preserving order of the links
+        resolution_results = asyncio.run(gnews_decoder_async(rss_urls))
 
-    # If fetching of the url fails, return None
-    except DDGSException:
-        extracted_text = None
+        # Make a mapping of each RSS URL to the resolved version, skipping any
+        # RSS URLs that could not be resolved
+        rss_urls_to_original_urls = dict()
+        for rss_url, resolution_result in zip(rss_urls, resolution_results):
+            if resolution_result["success"]:
+                rss_urls_to_original_urls[rss_url] = resolution_result["decoded_url"]
 
-    return extracted_text
+            else:
+                print(f"Error occurred during resolution of {rss_url}:", resolution_result["message"])
+
+        # Convert RSS URL to the resolved version. If resolution of a RSS URL
+        # was unsuccessful, leave the original RSS URL as it is
+        search_results_with_resolved_urls = list()
+        for result in search_results:
+            result_with_resolved_url = {
+                "publisher": result["publisher"],
+                "description": result["description"],
+                "published date": result["published date"],
+                "title": result["title"],
+                "url": rss_urls_to_original_urls.get(result["url"], result["url"])
+            }
+            search_results_with_resolved_urls.append(result_with_resolved_url)
+
+        return search_results_with_resolved_urls
+
+    except Exception as error:
+        print(f"Error occurred during resolution of RSS URLs: {error}")
+        return search_results
 
 
-def convert_html_to_markdown(html: str) -> str:
-    # Only focus on the main content and convert it to markdown
-    return extract(html, output_format="markdown")
+async def fetch_content_for_search_result(google_news: GNews, search_result: dict) -> dict[str, str] | None:
+    url = search_result["url"]
 
+    try:
+        full_article = await asyncio.to_thread(google_news.get_full_article, url)
 
-def extract_and_format_source(search_result: dict[str, str]) -> dict[str, str] | None:
-    extracted_html = extract_with_ddgs(search_result["url"])
-    if not extracted_html:
-        return None
+        extracted_source = {
+            "title": search_result["title"],
+            "website": search_result["publisher"]["title"],
+            "date_published": search_result["published date"],
+            "url": url,
+            "content": full_article["text"]
+        }
 
-    extracted_markdown = convert_html_to_markdown(extracted_html)
+        return extracted_source
 
-    return {
-        "title": search_result["title"],
-        "website": search_result["source"],
-        "date_published": search_result["date"],
-        "url": search_result["url"],
-        "content": extracted_markdown
-    }
+    # Failed to extract the full source text - return None
+    except NetworkError as error:
+        print(f"Error occurred when extracting full article: {error}")
+        
+
+async def fetch_content_for_all_search_results(google_news: GNews, search_results: list[dict]) -> list[dict]:
+    extraction_tasks = list()
+
+    async with asyncio.TaskGroup() as task_group:
+        for search_result in search_results:
+            task = task_group.create_task(fetch_content_for_search_result(google_news, search_result))
+            extraction_tasks.append(task)
+
+    # Ignore all sources for which the full article cannot be extracted
+    extracted_sources = [task.result() for task in extraction_tasks if task.result() is not None]
+
+    return extracted_sources
 
 
 @tool
-def search_and_extract(query: str) -> list[dict[str, str]]:
-    """Search DuckDuckGo News for webpages relevant to the specified election and
-    extract their content as Markdown.
+def get_available_countries_for_search() -> dict[str, str]:
+    """Return the countries supported by the news search tool.
 
-    Only successfully extracted webpages are returned. Each result contains:
-
-    - title: Webpage title.
-    - website: Publisher or organisation.
-    - date_published: Approximate date supplied by DuckDuckGo.
-    - url: Direct webpage URL.
-    - content: Extracted webpage content.
-
-    Use the returned `content` to assess source relevance and credibility and to
-    select exact quotations. Include the election year, country, election type, and
-    research topic in the query.
-
-    Args:
-        query: A focused search query about the specified election.
+    The returned dictionary maps country names to the two-letter country codes
+    required by the `country_for_search` argument of `search_and_extract`.
 
     Returns:
-        A list of successfully extracted webpages, or an empty list if none can be
-        found or extracted.
+        A dictionary mapping country names to ISO-style two-letter country codes.
+        For example: ``{"Australia": "AU", "Botswana": "BW"}``.
     """
 
-    search_results = search_with_ddgs(query)
+    return AVAILABLE_COUNTRIES
 
-    # Extract the markdown of all the sources obtained from the query search, in parallel
-    extracted_sources = list()
-    with ThreadPoolExecutor(max_workers=MAX_SEARCH_RESULTS_PER_CALL) as executor:
-        futures = [
-            executor.submit(extract_and_format_source, search_result)
-            for search_result in search_results
-        ]
 
-        for future in as_completed(futures):
-            source = future.result()
+@tool
+def search_and_extract(query: str, country_for_search: str | None = None, start_date_for_search: list[int] | None = None, end_date_for_search: list[int] | None = None) -> list[dict[str, str]] | str:
+    """Search Google News and extract the full text of relevant webpages.
 
-            # Add this formatted source if it has indeed been extracted properly
-            if source is not None:
-                extracted_sources.append(source)
+    The search is restricted to the specified country and date range. The
+    GNews country parameter must be a supported two-letter country code. Use
+    `get_available_countries_for_search` to find valid country codes.
 
-    return extracted_sources
+    Dates must be three-integer lists in [year, month, day] format, for example
+    [2024, 1, 1]. The date range is inclusive.
+
+    Only webpages whose full text is successfully extracted are returned.
+    Each returned dictionary contains:
+
+    - `title`: The webpage title.
+    - `website`: The publisher or organisation.
+    - `date_published`: The approximate publication date supplied by GNews.
+    - `url`: The direct webpage URL.
+    - `content`: The extracted webpage text.
+
+    Use the returned `content` to assess source relevance and credibility and to
+    select exact quotations. The query should include the election year,
+    country, election type, and specific research topic.
+
+    Args:
+        query: A focused natural-language news-search query.
+        country_for_search: A supported two-letter country code.
+        start_date_for_search: Start date as ``(year, month, day)``.
+        end_date_for_search: End date as ``(year, month, day)``.
+
+    Returns:
+        A list of successfully extracted webpage dictionaries. If the search
+        fails, returns a string describing the search error. If no webpages can
+        be extracted, returns an empty list.
+    """
+
+    # Verify that the date inputs represent valid dates
+    try:
+        validate_date_parts(start_date_for_search)
+        validate_date_parts(end_date_for_search)
+    except ValueError as date_error:
+        return f"Date error: {date_error}"
+
+    # Initialise GNews with various parameters
+    google_news = GNews(
+        language="en",
+        country=country_for_search,
+        start_date=tuple(start_date_for_search),
+        end_date=tuple(end_date_for_search),
+        max_results=MAX_SEARCH_RESULTS_PER_CALL
+    )
+
+    try:
+        # Search for potential articles with the chosen query
+        search_results = google_news.get_news(query)
+        resolved_search_results = resolve_rss_urls(search_results)
+
+        # Extract the full article for each URL obtained
+        extracted_sources = asyncio.run(fetch_content_for_all_search_results(google_news, resolved_search_results))
+
+        return extracted_sources
+    
+    # Something went wrong during the initial news search with the query - return an error message
+    except GNewsException as search_error:
+        return f"Search error: {search_error}"
 
 
 class SearchAgent(Agent):
@@ -111,10 +197,11 @@ class SearchAgent(Agent):
             # LLM used
             model=ChatGoogleGenerativeAI(
                 model=MODEL_NAME,
-                api_key=api_key
+                api_key=api_key,
+                thinking_level=THINKING_LEVEL
             ),
 
-            tools=[search_and_extract],
+            tools=[get_available_countries_for_search, search_and_extract],
 
             system_prompt=SEARCH_AGENT_SYSTEM_PROMPT.format(
                 max_searches=MAX_SEARCHES,
@@ -124,8 +211,13 @@ class SearchAgent(Agent):
             # Pydantic model to specify the output format of the agent
             response_format=SearchAgentResponse,
 
-            # Limit the number of times the tool is called
+            # Limit the number of times the tools are called
             middleware=[
+                ToolCallLimitMiddleware(
+                    tool_name="get_available_countries_for_search",
+                    run_limit=MAX_AVAILABLE_COUNTRIES_CHECKS,
+                    exit_behavior="continue"
+                ),
                 ToolCallLimitMiddleware(
                     tool_name="search_and_extract",
                     run_limit=MAX_SEARCHES,

@@ -6,8 +6,8 @@ import os
 from supabase import create_client, Client
 from typing import Annotated, Any
 
-from api_types import Division, DivisionResult, Election, ElectionsResponse, ElectionType, OtherResult, ParticipationResult, Region, RegionResult, YearResult
-from whitelist import ALLOWED_ORIGINS
+from .api_types import Division, DivisionResult, Election, ElectionsResponse, ElectionType, OtherResult, ParticipationResult, Region, RegionResult, YearResult
+from .whitelist import ALLOWED_ORIGINS
 
 
 load_dotenv()

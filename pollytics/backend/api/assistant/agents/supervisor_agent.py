@@ -12,8 +12,9 @@ from ..utils.prompts import SUPERVISOR_AGENT_SYSTEM_PROMPT
 
 
 MODEL_NAME = "gemini-3.5-flash-lite"
-MAX_SEARCH_AGENT_CALLS = 2
+MAX_SEARCH_AGENT_CALLS = 1
 MAX_DATABASE_AGENT_CALLS = 1
+THINKING_LEVEL = "minimal"
 
 load_dotenv()
 google_api_key = os.environ.get("GOOGLE_API_KEY")
@@ -75,7 +76,8 @@ class SupervisorAgent(Agent):
             # LLM used
             model=ChatGoogleGenerativeAI(
                 model=MODEL_NAME,
-                api_key=api_key
+                api_key=api_key,
+                thinking_level=THINKING_LEVEL
             ),
 
             tools=[call_search_agent, call_database_agent],
@@ -115,4 +117,4 @@ if __name__ == "__main__":
         api_key=google_api_key
     )
 
-    print(supervisor_agent.invoke("evaluate harris' performance in new jersey"))
+    print(supervisor_agent.invoke("evaluate harris' performance in new jersey in detail."))
